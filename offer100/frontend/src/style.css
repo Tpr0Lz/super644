@@ -1,0 +1,208 @@
+:root {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  color: #13243a;
+  background: linear-gradient(135deg, #f4f8ff 0%, #e8f2ff 40%, #dbe9ff 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.page,
+.login-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.card,
+.panel {
+  background: #ffffffd9;
+  border: 1px solid #cfe0ff;
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 12px 26px rgba(19, 36, 58, 0.08);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.topbar p {
+  margin: 4px 0 0;
+  color: #466184;
+}
+
+.actions,
+.topbar .actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.user {
+  font-weight: 600;
+}
+
+select {
+  border-radius: 10px;
+  border: 1px solid #b8ccf7;
+  padding: 8px 10px;
+  background: #fff;
+}
+
+form {
+  display: grid;
+  gap: 10px;
+}
+
+input,
+textarea,
+button,
+a.download {
+  border-radius: 10px;
+  border: 1px solid #b8ccf7;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+button,
+a.download {
+  background: #1e63d8;
+  color: white;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+button:disabled {
+  background: #8daee8;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #c91f37;
+}
+
+.job-list,
+.events {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.job-item {
+  border: 1px solid #d6e3ff;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.job-item h3 {
+  margin: 0 0 8px;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.tags span {
+  background: #edf3ff;
+  color: #1d4c95;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.form-panel .job-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-panel .job-form textarea,
+.form-panel .job-form button {
+  grid-column: 1 / -1;
+}
+
+.chat-wrap {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 12px;
+}
+
+.chat-users {
+  border: 1px solid #d6e3ff;
+  border-radius: 12px;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.chat-user {
+  background: #fff;
+  color: #1d4c95;
+}
+
+.chat-user.active {
+  background: #1e63d8;
+  color: #fff;
+}
+
+.chat-main {
+  border: 1px solid #d6e3ff;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.chat-list {
+  min-height: 180px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.chat-form {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .form-panel .job-form {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-wrap {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-form {
+    grid-template-columns: 1fr;
+  }
+}

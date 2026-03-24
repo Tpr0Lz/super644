@@ -6,6 +6,15 @@ const { emitRecruitmentUpdate } = require('../modules/socketHub');
 
 const router = express.Router();
 
+function parseJsonArray(raw) {
+  try {
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
 function mapResumeRow(row) {
   return {
     userId: row.user_id,
@@ -225,6 +234,9 @@ router.put('/me', authenticate, requireIdentity(['jobseeker']), async (req, res)
 
 router.get('/seekers', authenticate, requireIdentity(['recruiter']), async (req, res) => {
   try {
+    const keyword = String(req.query.keyword || '').trim().toLowerCase();
+    const jobTag = String(req.query.jobTag || '').trim().toLowerCase();
+
     const rows = await all(
       `SELECT u.id AS user_id, u.username,
               r.full_name, r.skills, r.experience, r.education, r.updated_at,
@@ -241,6 +253,36 @@ router.get('/seekers', authenticate, requireIdentity(['recruiter']), async (req,
        ORDER BY r.updated_at DESC`
     );
 
+    const recruiterJobs = await all('SELECT tags FROM jobs WHERE recruiter_user_id = ?', [req.user.id]);
+    const recruiterTagSet = new Set();
+    recruiterJobs.forEach((job) => {
+      parseJsonArray(job.tags).forEach((tag) => {
+        const text = String(tag || '').trim().toLowerCase();
+        if (text) {
+          recruiterTagSet.add(text);
+        }
+      });
+    });
+
+    let filteredRows = rows;
+    if (jobTag) {
+      if (!recruiterTagSet.has(jobTag)) {
+        filteredRows = [];
+      } else {
+        filteredRows = filteredRows.filter((row) => {
+          const text = `${row.strengths || ''} ${row.expected_position || ''} ${row.skills || ''}`.toLowerCase();
+          return text.includes(jobTag);
+        });
+      }
+    }
+
+    if (keyword) {
+      filteredRows = filteredRows.filter((row) => {
+        const text = `${row.strengths || ''} ${row.expected_position || ''} ${row.skills || ''}`.toLowerCase();
+        return text.includes(keyword);
+      });
+    }
+
     await trackBehavior({
       userId: req.user.id,
       role: req.user.activeIdentity,
@@ -249,9 +291,27 @@ router.get('/seekers', authenticate, requireIdentity(['recruiter']), async (req,
       targetId: 0
     });
 
-    res.json(rows.map(mapResumeRow));
+    res.json(filteredRows.map(mapResumeRow));
   } catch (error) {
     res.status(500).json({ message: 'Failed to load seekers', detail: error.message });
+  }
+});
+
+router.get('/job-tags', authenticate, requireIdentity(['recruiter']), async (req, res) => {
+  try {
+    const rows = await all('SELECT tags FROM jobs WHERE recruiter_user_id = ?', [req.user.id]);
+    const set = new Set();
+    rows.forEach((row) => {
+      parseJsonArray(row.tags).forEach((tag) => {
+        const text = String(tag || '').trim();
+        if (text) {
+          set.add(text);
+        }
+      });
+    });
+    return res.json(Array.from(set).sort((a, b) => a.localeCompare(b, 'zh-CN')));
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to load recruiter job tags', detail: error.message });
   }
 });
 

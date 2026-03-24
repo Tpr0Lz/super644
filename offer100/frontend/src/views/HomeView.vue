@@ -8,7 +8,7 @@
       @logout="logout"
     />
 
-    <el-card shadow="never" class="sub-nav-card">
+    <el-card v-if="isRecruiter" shadow="never" class="sub-nav-card">
       <el-segmented :model-value="activeSegment" :options="segmentOptions" @change="onSegmentChange" />
     </el-card>
 
@@ -29,11 +29,10 @@ const authStore = useAuthStore();
 const isRecruiter = computed(() => authStore.activeIdentity === 'recruiter');
 const activeSegment = computed(() => (route.name === 'home-publish' ? 'publish' : 'overview'));
 const segmentOptions = computed(() => {
-  const base = [{ label: isRecruiter.value ? '招聘总览' : '职位总览', value: 'overview' }];
-  if (isRecruiter.value) {
-    base.push({ label: '发布岗位', value: 'publish' });
-  }
-  return base;
+  return [
+    { label: '招聘总览', value: 'overview' },
+    { label: '发布岗位', value: 'publish' }
+  ];
 });
 
 function onSegmentChange(value) {

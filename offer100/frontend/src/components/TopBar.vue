@@ -21,17 +21,25 @@
 
       <el-menu :default-active="activeMenu" mode="horizontal" router class="top-nav-menu">
         <el-menu-item index="/">{{ homeLabel }}</el-menu-item>
+        <el-menu-item index="/ai">超级644AI</el-menu-item>
         <el-menu-item index="/profile">个人信息</el-menu-item>
         <el-menu-item index="/identity-register">注册身份</el-menu-item>
-        <el-menu-item index="/chat">聊天消息</el-menu-item>
+        <el-menu-item index="/chat">
+          <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99" type="danger">
+            <span>聊天消息</span>
+          </el-badge>
+        </el-menu-item>
       </el-menu>
     </el-card>
   </header>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { io } from 'socket.io-client';
+import http from '../api/http';
+import { useAuthStore } from '../stores/auth';
 
 const props = defineProps({
   username: {
@@ -49,8 +57,25 @@ const props = defineProps({
 });
 
 const route = useRoute();
+const authStore = useAuthStore();
+const unreadCount = ref(0);
+let socket;
+
+async function loadUnreadSummary() {
+  if (!authStore.token) {
+    unreadCount.value = 0;
+    return;
+  }
+  try {
+    const { data } = await http.get('/chat/unread-summary');
+    unreadCount.value = Number(data?.unreadCount || 0);
+  } catch (error) {
+    unreadCount.value = 0;
+  }
+}
 const homeLabel = computed(() => (props.activeIdentity === 'recruiter' ? '招聘' : '职位'));
 const activeMenu = computed(() => {
+  if (route.path.startsWith('/ai')) return '/ai';
   if (route.path.startsWith('/profile')) return '/profile';
   if (route.path.startsWith('/identity-register')) return '/identity-register';
   if (route.path.startsWith('/chat')) return '/chat';
@@ -61,6 +86,25 @@ const labelMap = {
   recruiter: '招聘人',
   jobseeker: '求职者'
 };
+
+onMounted(async () => {
+  await loadUnreadSummary();
+  socket = io('http://localhost:3001');
+  socket.on('recruitment:update', async (event) => {
+    if (!event?.type) {
+      return;
+    }
+    if (event.type === 'chat_message' || event.type === 'chat_read') {
+      await loadUnreadSummary();
+    }
+  });
+});
+
+onUnmounted(() => {
+  if (socket) {
+    socket.disconnect();
+  }
+});
 </script>
 
 <style scoped>

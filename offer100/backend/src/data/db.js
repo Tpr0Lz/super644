@@ -138,6 +138,9 @@ async function seedJobs() {
       company: 'TechNova',
       city: 'Shanghai',
       salaryRange: '12k-18k',
+      educationRequirement: '本科',
+      categoryL1: '互联网 / AI',
+      categoryL2: '前端开发（Vue / React）',
       tags: ['vue', 'javascript', 'frontend'],
       description: 'Develop and optimize enterprise SPA applications.',
       publishAt: '2026-03-01'
@@ -147,6 +150,9 @@ async function seedJobs() {
       company: 'CloudRiver',
       city: 'Hangzhou',
       salaryRange: '15k-22k',
+      educationRequirement: '双一流',
+      categoryL1: '互联网 / AI',
+      categoryL2: '后端开发（Java / Go / Python）',
       tags: ['nodejs', 'express', 'api'],
       description: 'Build scalable backend services and APIs.',
       publishAt: '2026-03-03'
@@ -156,6 +162,9 @@ async function seedJobs() {
       company: 'GrowthLab',
       city: 'Shenzhen',
       salaryRange: '9k-14k',
+      educationRequirement: '无限制',
+      categoryL1: '产品',
+      categoryL2: '增长产品经理',
       tags: ['operations', 'analysis'],
       description: 'Coordinate campaigns and optimize user conversion.',
       publishAt: '2026-03-05'
@@ -164,12 +173,18 @@ async function seedJobs() {
 
   for (const job of jobs) {
     await run(
-      'INSERT INTO jobs (title, company, city, salary_range, tags, description, publish_at, recruiter_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      `INSERT INTO jobs (
+        title, company, city, salary_range, education_requirement,
+        category_l1, category_l2, tags, description, publish_at, recruiter_user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         job.title,
         job.company,
         job.city,
         job.salaryRange,
+        job.educationRequirement,
+        job.categoryL1,
+        job.categoryL2,
         JSON.stringify(job.tags),
         job.description,
         job.publishAt,
@@ -342,6 +357,9 @@ async function initDb() {
       company TEXT NOT NULL,
       city TEXT NOT NULL,
       salary_range TEXT NOT NULL,
+      education_requirement TEXT,
+      category_l1 TEXT,
+      category_l2 TEXT,
       tags TEXT,
       description TEXT,
       publish_at TEXT,
@@ -428,6 +446,7 @@ async function initDb() {
       content TEXT NOT NULL,
       message_type TEXT DEFAULT 'text',
       payload_json TEXT,
+      is_read INTEGER DEFAULT 0,
       created_at TEXT NOT NULL
     )`
   );
@@ -475,11 +494,39 @@ async function initDb() {
   await ensureColumn('resumes', 'campus_experience', 'TEXT');
 
   await ensureColumn('jobs', 'recruiter_user_id', 'INTEGER');
+  await ensureColumn('jobs', 'education_requirement', 'TEXT');
+  await ensureColumn('jobs', 'category_l1', 'TEXT');
+  await ensureColumn('jobs', 'category_l2', 'TEXT');
   await ensureColumn('applications', 'message', 'TEXT');
   await ensureColumn('applications', 'status', "TEXT DEFAULT 'pending'");
   await ensureColumn('applications', 'snapshot_profile', 'TEXT');
   await ensureColumn('messages', 'message_type', "TEXT DEFAULT 'text'");
   await ensureColumn('messages', 'payload_json', 'TEXT');
+  await ensureColumn('messages', 'is_read', 'INTEGER DEFAULT 0');
+
+  await run(
+    `UPDATE jobs
+     SET education_requirement = COALESCE(education_requirement, '无限制')
+     WHERE education_requirement IS NULL OR education_requirement = ''`
+  );
+
+  await run(
+    `UPDATE jobs
+     SET category_l1 = COALESCE(category_l1, '互联网 / AI')
+     WHERE category_l1 IS NULL OR category_l1 = ''`
+  );
+
+  await run(
+    `UPDATE jobs
+     SET category_l2 = COALESCE(category_l2, title)
+     WHERE category_l2 IS NULL OR category_l2 = ''`
+  );
+
+  await run(
+    `UPDATE messages
+     SET is_read = COALESCE(is_read, 0)
+     WHERE is_read IS NULL`
+  );
 
   await run(
     `UPDATE users

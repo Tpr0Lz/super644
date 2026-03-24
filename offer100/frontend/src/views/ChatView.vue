@@ -24,12 +24,23 @@
             <el-avatar v-if="u.avatarUrl" :src="u.avatarUrl" :size="26" />
             <el-avatar v-else :size="26">{{ (u.nickname || u.username || '?').slice(0, 1) }}</el-avatar>
             <span>{{ u.nickname || u.username }}</span>
+            <el-badge
+              v-if="u.unreadCount > 0"
+              :value="u.unreadCount"
+              type="danger"
+              class="contact-badge"
+            />
           </el-button>
-          <el-empty v-if="contacts.length === 0" description="暂无联系人" :image-size="70" />
+          <el-empty v-if="contacts.length === 0" description="暂无历史消息，聊天界面默认空白" :image-size="70" />
         </aside>
 
         <div class="chat-main">
-          <div class="chat-list">
+          <el-empty
+            v-if="!activeContactId"
+            description="暂无会话，请先通过投递/邀请/互发消息建立联系"
+            :image-size="90"
+          />
+          <div v-else class="chat-list">
             <el-empty v-if="messages.length === 0" description="暂无消息，开始沟通吧" :image-size="80" />
             <el-card v-for="msg in messages" :key="msg.id" class="chat-msg" shadow="never">
               <strong>{{ msg.from_user_id === authStore.user?.id ? '我' : '对方' }}:</strong>
@@ -51,7 +62,7 @@
             </el-card>
           </div>
 
-          <el-form class="chat-form" @submit.prevent>
+          <el-form v-if="activeContactId" class="chat-form" @submit.prevent>
             <el-input
               v-model.trim="messageText"
               placeholder="输入消息..."
@@ -87,18 +98,38 @@ let socket;
 
 async function loadContacts() {
   const { data } = await http.get('/chat/contacts');
-  contacts.value = data;
+  contacts.value = Array.isArray(data)
+    ? [...data].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0))
+    : [];
 
   const routeContactId = Number(route.query.with || 0);
-  if (routeContactId && data.some((item) => item.id === routeContactId)) {
+  if (routeContactId && contacts.value.some((item) => item.id === routeContactId)) {
     activeContactId.value = routeContactId;
     await loadMessages();
     return;
   }
 
-  if (!activeContactId.value && data.length > 0) {
-    activeContactId.value = data[0].id;
+  if (routeContactId && !contacts.value.some((item) => item.id === routeContactId)) {
+    try {
+      const { data: target } = await http.get(`/chat/users/${routeContactId}`);
+      contacts.value = [target, ...contacts.value];
+      activeContactId.value = routeContactId;
+      await loadMessages();
+      return;
+    } catch (error) {
+      // ignore invalid route target and keep empty state
+    }
+  }
+
+  if (!activeContactId.value && contacts.value.length > 0) {
+    activeContactId.value = contacts.value[0].id;
     await loadMessages();
+    return;
+  }
+
+  if (!contacts.value.some((item) => item.id === activeContactId.value)) {
+    activeContactId.value = 0;
+    messages.value = [];
   }
 }
 
@@ -126,6 +157,7 @@ async function sendMessage() {
 async function selectContact(userId) {
   activeContactId.value = userId;
   await loadMessages();
+  await loadContacts();
 }
 
 async function switchIdentity(identity) {
@@ -153,14 +185,16 @@ onMounted(async () => {
 
   socket = io('http://localhost:3001');
   socket.on('recruitment:update', async (event) => {
-    if (event.type === 'chat_message') {
+    if (event.type === 'chat_message' || event.type === 'chat_read') {
       const msg = event.payload;
       if (
-        msg.from_user_id === activeContactId.value ||
-        msg.to_user_id === activeContactId.value
+        event.type === 'chat_read' ||
+        msg?.from_user_id === activeContactId.value ||
+        msg?.to_user_id === activeContactId.value
       ) {
         await loadMessages();
       }
+      await loadContacts();
     }
   });
 });
@@ -198,6 +232,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.contact-badge {
+  margin-left: auto;
 }
 
 .chat-main {

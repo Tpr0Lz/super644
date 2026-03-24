@@ -4,6 +4,7 @@
       <h3>{{ job.title }}</h3>
       <p class="meta">{{ job.company }} | {{ job.city }}</p>
       <p class="salary">{{ job.salaryRange }}</p>
+      <p class="meta">学历：{{ job.educationRequirement || '无限制' }}</p>
       <div class="tags" v-if="Array.isArray(job.tags) && job.tags.length > 0">
         <el-tag v-for="tag in job.tags.slice(0, 3)" :key="`${job.id}-${tag}`" size="small" effect="plain">{{ tag }}</el-tag>
       </div>

@@ -13,8 +13,26 @@
       <el-form-item label="工作城市" required>
         <el-input v-model.trim="jobForm.city" placeholder="如：上海" />
       </el-form-item>
+      <el-form-item label="外层分类" required>
+        <el-select v-model="jobForm.categoryL1" placeholder="请选择岗位大类" @change="onCategoryL1Change">
+          <el-option v-for="item in categoryOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="内层岗位" required>
+        <el-select v-model="jobForm.categoryL2" placeholder="请选择具体岗位">
+          <el-option v-for="item in subCategoryOptions" :key="item" :label="item" :value="item" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="薪资范围" required>
         <el-input v-model.trim="jobForm.salaryRange" placeholder="如：12k-18k" />
+      </el-form-item>
+      <el-form-item label="学历要求" required>
+        <el-select v-model="jobForm.educationRequirement" placeholder="请选择学历要求">
+          <el-option label="本科" value="本科" />
+          <el-option label="双一流" value="双一流" />
+          <el-option label="专科" value="专科" />
+          <el-option label="无限制" value="无限制" />
+        </el-select>
       </el-form-item>
       <el-form-item label="岗位标签" required>
         <el-input v-model.trim="jobForm.tags" placeholder="如：vue,javascript,frontend" />
@@ -32,19 +50,34 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import http from '../../api/http';
+import { JOB_CATEGORY_TREE } from '../../constants/jobCategories';
 
 const tip = ref('');
+const categoryOptions = JOB_CATEGORY_TREE;
 
 const jobForm = reactive({
   title: '前端开发工程师',
   company: 'CampusTech',
   city: '上海',
+  categoryL1: '互联网 / AI',
+  categoryL2: '前端开发（Vue / React）',
   salaryRange: '12k-18k',
+  educationRequirement: '本科',
   tags: 'vue,javascript,frontend',
   description: '负责企业级 Web 前端开发。'
 });
+
+const subCategoryOptions = computed(() => {
+  const target = JOB_CATEGORY_TREE.find((item) => item.value === jobForm.categoryL1);
+  return target?.children || [];
+});
+
+function onCategoryL1Change(value) {
+  const target = JOB_CATEGORY_TREE.find((item) => item.value === value);
+  jobForm.categoryL2 = target?.children?.[0] || '';
+}
 
 async function createJob() {
   try {

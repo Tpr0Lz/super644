@@ -9,6 +9,7 @@ import RecruiterDashboard from '../views/RecruiterDashboard.vue';
 import SeekerDashboard from '../views/SeekerDashboard.vue';
 import SeekerDetailView from '../views/SeekerDetailView.vue';
 import ChatView from '../views/ChatView.vue';
+import AiAssistantView from '../views/AiAssistantView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import IdentityRegisterView from '../views/IdentityRegisterView.vue';
 
@@ -68,6 +69,12 @@ const routes = [
     path: '/chat',
     name: 'chat',
     component: ChatView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/ai',
+    name: 'ai-assistant',
+    component: AiAssistantView,
     meta: { requiresAuth: true }
   },
   {

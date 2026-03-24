@@ -10,14 +10,14 @@
         <h2>登录 Offer100</h2>
         <p>登录后默认以注册时选择的初始身份进入系统。</p>
         <form @submit.prevent="submitLogin" class="form">
-          <label>
-            用户名
+          <div class="line-field">
+            <span class="line-label">账号</span>
             <input v-model.trim="loginForm.username" placeholder="请输入用户名" required />
-          </label>
-          <label>
-            密码
+          </div>
+          <div class="line-field">
+            <span class="line-label">密码</span>
             <input v-model="loginForm.password" type="password" placeholder="请输入密码" required />
-          </label>
+          </div>
           <button type="submit" :disabled="loading">{{ loading ? '登录中...' : '登录' }}</button>
         </form>
       </template>
@@ -226,6 +226,18 @@ async function submitRegister() {
 
 .sub-panel h3 {
   margin: 4px 0;
+}
+
+.line-field {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.line-label {
+  text-align: right;
+  color: #334155;
 }
 
 .tip {

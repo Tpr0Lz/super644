@@ -8,6 +8,12 @@ const router = express.Router();
 
 router.get('/', authenticate, async (req, res) => {
   try {
+    const keyword = String(req.query.keyword || '').trim().toLowerCase();
+    const tag = String(req.query.tag || '').trim().toLowerCase();
+    const categoryL1 = String(req.query.categoryL1 || '').trim();
+    const categoryL2 = String(req.query.categoryL2 || '').trim();
+    const educationRequirement = String(req.query.educationRequirement || '').trim();
+
     await trackBehavior({
       userId: req.user.id,
       role: req.user.activeIdentity,
@@ -17,7 +23,11 @@ router.get('/', authenticate, async (req, res) => {
     });
 
     const rows = await all(
-      'SELECT id, title, company, city, salary_range, tags, description, publish_at, recruiter_user_id FROM jobs ORDER BY id DESC'
+      `SELECT id, title, company, city, salary_range, education_requirement,
+              category_l1, category_l2,
+              tags, description, publish_at, recruiter_user_id
+       FROM jobs
+       ORDER BY id DESC`
     );
 
     const jobs = rows.map((row) => ({
@@ -26,6 +36,9 @@ router.get('/', authenticate, async (req, res) => {
       company: row.company,
       city: row.city,
       salaryRange: row.salary_range,
+      educationRequirement: row.education_requirement || '无限制',
+      categoryL1: row.category_l1 || '',
+      categoryL2: row.category_l2 || '',
       tags: (() => {
         try {
           return row.tags ? JSON.parse(row.tags) : [];
@@ -38,9 +51,60 @@ router.get('/', authenticate, async (req, res) => {
       recruiterUserId: row.recruiter_user_id
     }));
 
-    res.json(jobs);
+    const filtered = jobs.filter((job) => {
+      if (categoryL1 && job.categoryL1 !== categoryL1) {
+        return false;
+      }
+      if (categoryL2 && job.categoryL2 !== categoryL2) {
+        return false;
+      }
+      if (educationRequirement && educationRequirement !== '全部学历' && job.educationRequirement !== educationRequirement) {
+        return false;
+      }
+      if (tag) {
+        const hasTag = Array.isArray(job.tags)
+          && job.tags.some((item) => String(item || '').toLowerCase().includes(tag));
+        if (!hasTag) {
+          return false;
+        }
+      }
+      if (!keyword) {
+        return true;
+      }
+      const haystack = [job.title, job.company, job.city, job.description, ...(job.tags || [])]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(keyword);
+    });
+
+    res.json(filtered);
   } catch (error) {
     res.status(500).json({ message: 'Failed to load jobs', detail: error.message });
+  }
+});
+
+router.get('/tags', authenticate, async (req, res) => {
+  try {
+    const rows = await all('SELECT tags FROM jobs');
+    const set = new Set();
+    for (const row of rows) {
+      try {
+        const parsed = row.tags ? JSON.parse(row.tags) : [];
+        if (Array.isArray(parsed)) {
+          parsed.forEach((tag) => {
+            const text = String(tag || '').trim();
+            if (text) {
+              set.add(text);
+            }
+          });
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+    res.json(Array.from(set).sort((a, b) => a.localeCompare(b, 'zh-CN')));
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to load tags', detail: error.message });
   }
 });
 
@@ -48,7 +112,9 @@ router.get('/:id', authenticate, async (req, res) => {
   try {
     const jobId = Number(req.params.id);
     const row = await get(
-      `SELECT j.id, j.title, j.company, j.city, j.salary_range, j.tags, j.description, j.publish_at,
+          `SELECT j.id, j.title, j.company, j.city, j.salary_range, j.education_requirement,
+            j.category_l1, j.category_l2,
+            j.tags, j.description, j.publish_at,
               j.recruiter_user_id, u.nickname AS recruiter_nickname,
               COALESCE(ip.avatar_url, '') AS recruiter_avatar
        FROM jobs j
@@ -68,6 +134,9 @@ router.get('/:id', authenticate, async (req, res) => {
       company: row.company,
       city: row.city,
       salaryRange: row.salary_range,
+      educationRequirement: row.education_requirement || '无限制',
+      categoryL1: row.category_l1 || '',
+      categoryL2: row.category_l2 || '',
       tags: (() => {
         try {
           return row.tags ? JSON.parse(row.tags) : [];
@@ -88,12 +157,37 @@ router.get('/:id', authenticate, async (req, res) => {
 
 router.post('/', authenticate, requireIdentity(['recruiter']), async (req, res) => {
   try {
-    const { title, company, city, salaryRange, tags = [], description } = req.body;
+    const {
+      title,
+      company,
+      city,
+      salaryRange,
+      educationRequirement = '无限制',
+      categoryL1 = '互联网 / AI',
+      categoryL2 = title,
+      tags = [],
+      description
+    } = req.body;
     const publishAt = new Date().toISOString().slice(0, 10);
 
     const insert = await run(
-      'INSERT INTO jobs (title, company, city, salary_range, tags, description, publish_at, recruiter_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [title, company, city, salaryRange, JSON.stringify(tags), description, publishAt, req.user.id]
+      `INSERT INTO jobs (
+        title, company, city, salary_range, education_requirement,
+        category_l1, category_l2, tags, description, publish_at, recruiter_user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        title,
+        company,
+        city,
+        salaryRange,
+        educationRequirement,
+        categoryL1,
+        categoryL2,
+        JSON.stringify(tags),
+        description,
+        publishAt,
+        req.user.id
+      ]
     );
 
     const newJob = {
@@ -102,6 +196,9 @@ router.post('/', authenticate, requireIdentity(['recruiter']), async (req, res) 
       company,
       city,
       salaryRange,
+      educationRequirement,
+      categoryL1,
+      categoryL2,
       tags,
       description,
       publishAt,

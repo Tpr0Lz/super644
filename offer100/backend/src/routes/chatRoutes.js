@@ -65,6 +65,28 @@ router.get('/contacts', authenticate, async (req, res) => {
       [req.user.id, req.user.id, req.user.id, req.user.activeIdentity, req.user.id, req.user.id]
     );
 
+    // 获取管理员用户
+    const admin = await get('SELECT id, username, nickname FROM users WHERE role = ? AND id != ?', [
+      'admin',
+      req.user.id
+    ]);
+
+    // 检查管理员是否已经在列表中
+    const adminInList = rows.some((row) => row.id === admin?.id);
+    if (admin && !adminInList) {
+      rows.push({
+        id: admin.id,
+        username: admin.username,
+        nickname: admin.nickname,
+        avatar_url: '',
+        last_message_at: null,
+        last_message_id: null,
+        unread_count: 0,
+        is_pinned: 0,
+        is_deleted: 0
+      });
+    }
+
     res.json(
       rows.map((row) => ({
         id: row.id,
@@ -73,7 +95,8 @@ router.get('/contacts', authenticate, async (req, res) => {
         avatarUrl: row.avatar_url || '',
         lastMessageAt: row.last_message_at || '',
         unreadCount: Number(row.unread_count || 0),
-        isPinned: Boolean(row.is_pinned)
+        isPinned: Boolean(row.is_pinned),
+        isAdmin: row.id === admin?.id
       }))
     );
   } catch (error) {
@@ -374,11 +397,18 @@ router.post('/contacts/:contactId/unpin', authenticate, async (req, res) => {
 });
 
 // 删除聊天记录
+// 删除聊天记录
 router.post('/contacts/:contactId/delete', authenticate, async (req, res) => {
   try {
     const contactId = Number(req.params.contactId);
     if (!contactId) {
       return res.status(400).json({ message: 'Invalid contactId' });
+    }
+
+    // 检查是否是管理员，如果是则禁止删除
+    const contact = await get('SELECT role FROM users WHERE id = ?', [contactId]);
+    if (contact?.role === 'admin') {
+      return res.status(403).json({ message: '无法删除与管理员的聊天' });
     }
 
     const existing = await get(

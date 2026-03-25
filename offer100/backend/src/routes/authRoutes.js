@@ -27,6 +27,13 @@ router.post('/register', async (req, res) => {
     if (!username || !password || !nickname) {
       return res.status(400).json({ message: '用户名、昵称和密码不能为空' });
     }
+
+    // 禁止注册保留用户名
+    const reservedUsernames = ['adminzsb', 'admin'];
+    if (reservedUsernames.includes(username.toLowerCase())) {
+      return res.status(400).json({ message: '该用户名已被系统保留，无法注册' });
+    }
+
     if (!['recruiter', 'jobseeker'].includes(initialIdentity)) {
       return res.status(400).json({ message: '初始身份必须是 recruiter 或 jobseeker' });
     }

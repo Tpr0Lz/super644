@@ -62,6 +62,16 @@ async function ensureColumn(tableName, columnName, columnDef) {
 }
 
 async function seedUsers() {
+  // 迁移：如果存在 admin 用户，删除它，改用 adminzsb
+  try {
+    const adminUser = await get("SELECT id FROM users WHERE username = 'admin'");
+    if (adminUser) {
+      await run("DELETE FROM users WHERE username = 'admin'");
+    }
+  } catch (error) {
+    // ignore
+  }
+
   const userCountRow = await get('SELECT COUNT(*) AS count FROM users');
   if (userCountRow.count > 0) {
     return;
@@ -69,9 +79,9 @@ async function seedUsers() {
 
   const users = [
     {
-      username: 'admin',
+      username: 'adminzsb',
       password: '123456',
-      nickname: '管理员',
+      nickname: '系统管理员',
       role: 'admin',
       major: 'Admin',
       preferenceTags: [],
@@ -534,6 +544,8 @@ async function initDb() {
   await ensureColumn('users', 'identities', 'TEXT');
   await ensureColumn('users', 'initial_identity', 'TEXT');
   await ensureColumn('users', 'created_at', 'TEXT');
+  await ensureColumn('users', 'status', "TEXT DEFAULT 'active'");
+  await ensureColumn('users', 'role', 'TEXT');
 
   await ensureColumn('companies', 'address', 'TEXT');
   await ensureColumn('companies', 'company_size', 'TEXT');
@@ -727,10 +739,6 @@ async function initDb() {
       UNIQUE(user_id, contact_user_id)
     )`
   );
-
-  // 为 users 表添加 status 和 role 字段（管理员功能）
-  await ensureColumn('users', 'status', "TEXT DEFAULT 'active'");
-  await ensureColumn('users', 'role', "TEXT DEFAULT 'user'");
 
   await seedJobs();
   await seedCompanies();

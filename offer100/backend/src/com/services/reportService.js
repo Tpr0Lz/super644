@@ -1,5 +1,5 @@
 const { createObjectCsvStringifier } = require('csv-writer');
-const { all, get } = require('../data/db');
+const { all, get } = require('../../data/db');
 const { getBehaviorStats } = require('./behaviorService');
 
 async function buildBehaviorCsv() {

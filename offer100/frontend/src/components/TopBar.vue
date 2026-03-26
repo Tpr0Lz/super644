@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <header class="topbar-wrap">
     <el-card shadow="never" class="top-shell">
       <div class="topbar">
@@ -22,11 +22,13 @@
       </div>
 
       <el-menu :default-active="activeMenu" mode="horizontal" router class="top-nav-menu">
-        <el-menu-item index="/">{{ homeLabel }}</el-menu-item>
-        <el-menu-item index="/ai">超级644AI</el-menu-item>
-        <el-menu-item index="/profile">个人信息</el-menu-item>
+        <el-menu-item v-if="activeIdentity !== 'admin'" index="/">{{ homeLabel }}</el-menu-item>
+        <el-menu-item v-if="activeIdentity !== 'admin'" index="/ai">超级644AI</el-menu-item>
+        <el-menu-item v-if="activeIdentity !== 'admin'" index="/profile">个人信息</el-menu-item>
         <el-menu-item v-if="activeIdentity !== 'admin'" index="/identity-register">注册身份</el-menu-item>
-        <el-menu-item v-if="authStore.user?.username === 'adm'" index="/admin">管理员后台</el-menu-item>
+        <el-menu-item v-if="authStore.user?.username === 'adm'" index="/admin"> 管理员后台</el-menu-item>
+        <el-menu-item v-if="authStore.user?.username === 'adm'" index="/admin-jobs">岗位列表</el-menu-item>
+        <el-menu-item v-if="authStore.user?.username === 'adm'" index="/admin-seekers">求职者列表</el-menu-item>
         <el-menu-item index="/chat">
           <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99" type="danger">
             <span>聊天消息</span>
@@ -81,10 +83,13 @@ const homeLabel = computed(() => {
   return props.activeIdentity === 'recruiter' ? '招聘' : '职位';
 });
 const activeMenu = computed(() => {
+  if (route.path.startsWith('/chat')) return '/chat';
+  if (route.path.startsWith('/admin-seekers')) return '/admin-seekers';
+  if (route.path.startsWith('/admin-jobs')) return '/admin-jobs';
+  if (route.path.startsWith('/admin')) return '/admin';
   if (route.path.startsWith('/ai')) return '/ai';
   if (route.path.startsWith('/profile')) return '/profile';
   if (route.path.startsWith('/identity-register')) return '/identity-register';
-  if (route.path.startsWith('/chat')) return '/chat';
   return '/';
 });
 
@@ -92,7 +97,7 @@ const labelMap = {
   recruiter: '招聘人',
   jobseeker: '求职者',
   admin: '管理员'
-};
+};;
 
 onMounted(async () => {
   await loadUnreadSummary();
@@ -133,3 +138,19 @@ onUnmounted(() => {
   border-bottom: none;
 }
 </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

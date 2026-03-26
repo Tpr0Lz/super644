@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <main class="page">
     <TopBar
       :username="authStore.user?.nickname || authStore.user?.username"
@@ -8,7 +8,7 @@
       @logout="logout"
     />
 
-    <el-card v-if="isRecruiter || isAdmin" shadow="never" class="sub-nav-card">
+    <el-card v-if="isRecruiter" shadow="never" class="sub-nav-card">
       <el-segmented :model-value="activeSegment" :options="segmentOptions" @change="onSegmentChange" />
     </el-card>
 
@@ -29,17 +29,13 @@ const authStore = useAuthStore();
 const isRecruiter = computed(() => authStore.activeIdentity === 'recruiter');
 const isAdmin = computed(() => authStore.activeIdentity === 'admin');
 const activeSegment = computed(() => {
-  if (route.name === 'home-publish') {
-    return 'publish';
-  }
-  if (route.name === 'home-my-jobs') {
-    return 'my-jobs';
-  }
+  if (route.name === 'home-publish') return 'publish';
+  if (route.name === 'home-my-jobs') return 'my-jobs';
   return 'overview';
 });
 const segmentOptions = computed(() => {
   return [
-    { label: '招聘总览', value: 'overview' },
+    { label: '招聘概览', value: 'overview' },
     { label: '发布岗位', value: 'publish' },
     { label: '我的发布', value: 'my-jobs' }
   ];
@@ -75,3 +71,11 @@ function logout() {
   margin-bottom: 12px;
 }
 </style>
+
+
+
+
+
+
+
+

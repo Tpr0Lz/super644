@@ -1,6 +1,12 @@
-<template>
+﻿<template>
   <main class="page admin-view">
-    <TopBar :username="authStore.user?.username" :role="authStore.role" @logout="logout" />
+    <TopBar
+      :username="authStore.user?.nickname || authStore.user?.username"
+      :active-identity="authStore.activeIdentity"
+      :identities="authStore.identities"
+      @switch-identity="switchIdentity"
+      @logout="logout"
+    />
 
     <section class="panel admin-panel">
       <h2>管理员后台</h2>
@@ -77,6 +83,10 @@ const categoryForm = ref({
   category_l2: '',
 });
 
+function switchIdentity(identity) {
+  authStore.setActiveIdentity(identity);
+}
+
 async function loadData() {
   await Promise.all([
     loadCategories(),
@@ -96,7 +106,7 @@ async function fetchJobs() {
 
 async function fetchUsers() {
   try {
-    const res = await http.get('/admin/users'); // Adjust if endpoint difference
+    const res = await http.get('/admin/users');
     users.value = res.data?.items || res.data || [];
   } catch (err) {
     if (err.response?.status !== 404) {
@@ -144,7 +154,6 @@ async function createCategory() {
     });
     ElMessage.success('添加分类成功');
     categoryForm.value.category_l2 = '';
-    // Reload categories
     JOB_CATEGORY_TREE.value = [];
     await loadCategories();
   } catch (err) {

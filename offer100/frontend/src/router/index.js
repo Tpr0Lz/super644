@@ -19,6 +19,8 @@ import AdminSeekersView from '../views/admin/AdminSeekersView.vue';
 const routes = [
   { path: '/login', name: 'login', component: LoginView },
   { path: '/admin', name: 'admin', component: AdminView, meta: { requiresAuth: true } },
+  { path: '/admin-jobs', name: 'admin-jobs', component: AdminJobsView, meta: { requiresAuth: true, identity: 'admin' } },
+  { path: '/admin-seekers', name: 'admin-seekers', component: AdminSeekersView, meta: { requiresAuth: true, identity: 'admin' } },
   {
     path: '/',
     name: 'home',
@@ -37,23 +39,11 @@ const routes = [
         component: HomePublishJobView,
         meta: { requiresAuth: true, identity: 'recruiter' }
       },
-      {
+            {
         path: 'my-jobs',
         name: 'home-my-jobs',
         component: HomeMyJobsView,
         meta: { requiresAuth: true, identity: 'recruiter' }
-      },
-      {
-        path: 'admin-jobs',
-        name: 'admin-jobs',
-        component: AdminJobsView,
-        meta: { requiresAuth: true, identity: 'admin' }
-      },
-      {
-        path: 'admin-seekers',
-        name: 'admin-seekers',
-        component: AdminSeekersView,
-        meta: { requiresAuth: true, identity: 'admin' }
       }
     ]
   },
@@ -127,13 +117,16 @@ if (to.meta.identity && authStore.activeIdentity !== to.meta.identity && authSto
     return '/';
   }
 
-  // Redirect admin to admin-jobs if they try to access the default home overview
+  // Redirect admin to admin if they try to access the default home overview
   if (to.name === 'home-overview' && authStore.activeIdentity === 'admin') {    
-    return '/admin-jobs';
+    return '/admin';
   }
 
   return true;
 });
 
 export default router;
+
+
+
 

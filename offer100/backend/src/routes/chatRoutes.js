@@ -37,7 +37,26 @@ router.get('/contacts', authenticate, async (req, res) => {
   try {
     const rows = await all(
       `SELECT u.id, u.username, u.nickname,
-              COALESCE(ip.avatar_url, '') AS avatar_url,
+              COALESCE(
+                (
+                  SELECT ip1.avatar_url
+                  FROM identity_profiles ip1
+                  WHERE ip1.user_id = u.id
+                    AND ip1.identity = ?
+                    AND TRIM(COALESCE(ip1.avatar_url, '')) != ''
+                  ORDER BY ip1.updated_at DESC
+                  LIMIT 1
+                ),
+                (
+                  SELECT ip2.avatar_url
+                  FROM identity_profiles ip2
+                  WHERE ip2.user_id = u.id
+                    AND TRIM(COALESCE(ip2.avatar_url, '')) != ''
+                  ORDER BY ip2.updated_at DESC
+                  LIMIT 1
+                ),
+                ''
+              ) AS avatar_url,
               MAX(m.created_at) AS last_message_at,
               MAX(m.id) AS last_message_id,
               SUM(
@@ -55,14 +74,12 @@ router.get('/contacts', authenticate, async (req, res) => {
            OR
            (m.from_user_id = ? AND m.to_user_id = u.id)
          )
-       LEFT JOIN identity_profiles ip
-         ON ip.user_id = u.id AND ip.identity = ?
        LEFT JOIN user_contacts uc
          ON uc.user_id = ? AND uc.contact_user_id = u.id
        WHERE u.id != ? AND COALESCE(uc.is_deleted, 0) = 0
-       GROUP BY u.id, u.username, u.nickname, ip.avatar_url, is_pinned, is_deleted
+       GROUP BY u.id, u.username, u.nickname, is_pinned, is_deleted
        ORDER BY is_pinned DESC, last_message_at DESC, last_message_id DESC`,
-      [req.user.id, req.user.id, req.user.id, req.user.activeIdentity, req.user.id, req.user.id]
+      [req.user.activeIdentity, req.user.id, req.user.id, req.user.id, req.user.id]
     );
 
     // 获取管理员用户
@@ -113,9 +130,27 @@ router.get('/users/:userId', authenticate, async (req, res) => {
 
     const row = await get(
       `SELECT u.id, u.username, u.nickname,
-              COALESCE(ip.avatar_url, '') AS avatar_url
+              COALESCE(
+                (
+                  SELECT ip1.avatar_url
+                  FROM identity_profiles ip1
+                  WHERE ip1.user_id = u.id
+                    AND ip1.identity = ?
+                    AND TRIM(COALESCE(ip1.avatar_url, '')) != ''
+                  ORDER BY ip1.updated_at DESC
+                  LIMIT 1
+                ),
+                (
+                  SELECT ip2.avatar_url
+                  FROM identity_profiles ip2
+                  WHERE ip2.user_id = u.id
+                    AND TRIM(COALESCE(ip2.avatar_url, '')) != ''
+                  ORDER BY ip2.updated_at DESC
+                  LIMIT 1
+                ),
+                ''
+              ) AS avatar_url
        FROM users u
-       LEFT JOIN identity_profiles ip ON ip.user_id = u.id AND ip.identity = ?
        WHERE u.id = ?`,
       [req.user.activeIdentity, userId]
     );

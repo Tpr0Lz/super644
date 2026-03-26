@@ -259,7 +259,26 @@ router.get('/:id', authenticate, async (req, res) => {
               j.recruiter_user_id, u.nickname AS recruiter_nickname,
               COALESCE(c.address, '') AS company_address,
               COALESCE(c.intro, '') AS company_intro,
-              COALESCE(ip.avatar_url, '') AS recruiter_avatar,
+              COALESCE(
+                (
+                  SELECT ip1.avatar_url
+                  FROM identity_profiles ip1
+                  WHERE ip1.user_id = j.recruiter_user_id
+                    AND ip1.identity = 'recruiter'
+                    AND TRIM(COALESCE(ip1.avatar_url, '')) != ''
+                  ORDER BY ip1.updated_at DESC
+                  LIMIT 1
+                ),
+                (
+                  SELECT ip2.avatar_url
+                  FROM identity_profiles ip2
+                  WHERE ip2.user_id = j.recruiter_user_id
+                    AND TRIM(COALESCE(ip2.avatar_url, '')) != ''
+                  ORDER BY ip2.updated_at DESC
+                  LIMIT 1
+                ),
+                ''
+              ) AS recruiter_avatar,
               (
                 SELECT MAX(m.created_at)
                 FROM messages m
@@ -268,7 +287,6 @@ router.get('/:id', authenticate, async (req, res) => {
        FROM jobs j
        LEFT JOIN users u ON u.id = j.recruiter_user_id
        LEFT JOIN companies c ON c.user_id = j.recruiter_user_id
-       LEFT JOIN identity_profiles ip ON ip.user_id = j.recruiter_user_id AND ip.identity = 'recruiter'
        WHERE j.id = ?`,
       [jobId]
     );

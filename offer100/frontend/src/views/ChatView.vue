@@ -139,9 +139,19 @@ const messages = ref([]);
 const activeContactId = ref(0);
 const messageText = ref('');
 const chatListRef = ref(null);
+const myAvatarUrl = ref('');
 const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="%23dbeafe"/><circle cx="40" cy="30" r="14" fill="%2393c5fd"/><path d="M16 66c4-12 14-18 24-18s20 6 24 18" fill="%2393c5fd"/></svg>';
 
 let socket;
+
+async function loadMyAvatar() {
+  try {
+    const { data } = await http.get('/profile/me');
+    myAvatarUrl.value = data?.profile?.avatar_url || '';
+  } catch (error) {
+    myAvatarUrl.value = '';
+  }
+}
 
 async function loadContacts() {
   const { data } = await http.get('/chat/contacts');
@@ -270,7 +280,7 @@ function activeContact() {
 
 function messageAvatar(message) {
   if (message.from_user_id === authStore.user?.id) {
-    return DEFAULT_AVATAR;
+    return myAvatarUrl.value || DEFAULT_AVATAR;
   }
   return activeContact()?.avatarUrl || DEFAULT_AVATAR;
 }
@@ -317,6 +327,7 @@ function logout() {
 }
 
 onMounted(async () => {
+  await loadMyAvatar();
   try {
     await http.post('/chat/mark-all-read');
   } catch (error) {
@@ -352,6 +363,7 @@ watch(
   async () => {
     activeContactId.value = 0;
     messages.value = [];
+    await loadMyAvatar();
     await loadContacts();
   }
 );

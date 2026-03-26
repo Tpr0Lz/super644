@@ -506,7 +506,26 @@ router.get('/seekers', authenticate, requireIdentity(['recruiter']), async (req,
               r.age, r.gender, r.strengths, r.job_hunting_status, r.expected_job_type, r.expected_position,
               r.internship_experience, r.project_experience,
               r.competition_experience, r.campus_experience,
-              COALESCE(ip.avatar_url, '') AS avatar_url,
+              COALESCE(
+                (
+                  SELECT ip1.avatar_url
+                  FROM identity_profiles ip1
+                  WHERE ip1.user_id = u.id
+                    AND ip1.identity = 'jobseeker'
+                    AND TRIM(COALESCE(ip1.avatar_url, '')) != ''
+                  ORDER BY ip1.updated_at DESC
+                  LIMIT 1
+                ),
+                (
+                  SELECT ip2.avatar_url
+                  FROM identity_profiles ip2
+                  WHERE ip2.user_id = u.id
+                    AND TRIM(COALESCE(ip2.avatar_url, '')) != ''
+                  ORDER BY ip2.updated_at DESC
+                  LIMIT 1
+                ),
+                ''
+              ) AS avatar_url,
               COALESCE(ip.common_phrase, '') AS common_phrase,
               (
                 SELECT MAX(m.created_at)
@@ -630,7 +649,26 @@ router.get('/seekers/:userId', authenticate, requireIdentity(['recruiter']), asy
               r.age, r.gender, r.strengths, r.job_hunting_status, r.expected_job_type, r.expected_position,
               r.internship_experience, r.project_experience,
               r.competition_experience, r.campus_experience,
-              COALESCE(ip.avatar_url, '') AS avatar_url,
+              COALESCE(
+                (
+                  SELECT ip1.avatar_url
+                  FROM identity_profiles ip1
+                  WHERE ip1.user_id = u.id
+                    AND ip1.identity = 'jobseeker'
+                    AND TRIM(COALESCE(ip1.avatar_url, '')) != ''
+                  ORDER BY ip1.updated_at DESC
+                  LIMIT 1
+                ),
+                (
+                  SELECT ip2.avatar_url
+                  FROM identity_profiles ip2
+                  WHERE ip2.user_id = u.id
+                    AND TRIM(COALESCE(ip2.avatar_url, '')) != ''
+                  ORDER BY ip2.updated_at DESC
+                  LIMIT 1
+                ),
+                ''
+              ) AS avatar_url,
               COALESCE(ip.common_phrase, '') AS common_phrase
        FROM users u
        JOIN resumes r ON r.user_id = u.id
@@ -758,7 +796,26 @@ router.get('/seekers/:userId/export-word', authenticate, requireIdentity(['recru
               r.age, r.gender, r.strengths, r.job_hunting_status, r.expected_job_type, r.expected_position,
               r.internship_experience, r.project_experience,
               r.competition_experience, r.campus_experience,
-              COALESCE(ip.avatar_url, '') AS avatar_url,
+              COALESCE(
+                (
+                  SELECT ip1.avatar_url
+                  FROM identity_profiles ip1
+                  WHERE ip1.user_id = u.id
+                    AND ip1.identity = 'jobseeker'
+                    AND TRIM(COALESCE(ip1.avatar_url, '')) != ''
+                  ORDER BY ip1.updated_at DESC
+                  LIMIT 1
+                ),
+                (
+                  SELECT ip2.avatar_url
+                  FROM identity_profiles ip2
+                  WHERE ip2.user_id = u.id
+                    AND TRIM(COALESCE(ip2.avatar_url, '')) != ''
+                  ORDER BY ip2.updated_at DESC
+                  LIMIT 1
+                ),
+                ''
+              ) AS avatar_url,
               COALESCE(ip.common_phrase, '') AS common_phrase
        FROM users u
        JOIN resumes r ON r.user_id = u.id

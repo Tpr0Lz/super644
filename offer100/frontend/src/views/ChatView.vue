@@ -26,7 +26,10 @@
               @click="selectContact(u.id)"
             >
               <el-avatar :src="u.avatarUrl || DEFAULT_AVATAR" :size="26" />
-              <span>{{ u.nickname || u.username }}</span>
+              <span>
+                {{ u.nickname || u.username }}
+                <el-tag v-if="u.username === 'adm'" type="danger" size="small" style="margin-left: 4px;">管理员</el-tag>
+              </span>
               <el-badge
                 v-if="u.unreadCount > 0"
                 :value="u.unreadCount"
@@ -71,13 +74,29 @@
           />
           <div v-else ref="chatListRef" class="chat-list">
             <el-empty v-if="messages.length === 0" description="暂无消息，开始沟通吧" :image-size="80" />
-            <div
-              v-for="msg in messages"
-              :key="msg.id"
-              class="chat-msg"
-              :class="{ mine: msg.from_user_id === authStore.user?.id }"
-            >
-              <el-avatar class="msg-avatar" :src="messageAvatar(msg)" :size="28" />
+            <div v-for="msg in messages" :key="msg.id">
+              <div v-if="msg.message_type === 'ai_match_card'" class="ai-match-container">
+                <el-card shadow="never" class="ai-match-card">
+                  <div class="ai-match-header">
+                    你与该职位的匹配分析
+                  </div>
+                  <div class="ai-match-body">
+                    该岗位与该求职人的匹配度高达 <span class="highlight">{{ safePayload(msg).matchScore }}%</span><br/>
+                    计算发现最适合该求职人的岗位为：<b>{{ safePayload(msg).bestJobName }}</b>
+                  </div>
+                  <div class="ai-match-footer">
+                    <el-button type="primary" size="small" @click="$router.push('/jobs/' + safePayload(msg).bestJobId)">
+                      查看详细分析
+                    </el-button>
+                  </div>
+                </el-card>
+              </div>
+              <div
+                v-else
+                class="chat-msg"
+                :class="{ mine: msg.from_user_id === authStore.user?.id }"
+              >
+                <el-avatar class="msg-avatar" :src="messageAvatar(msg)" :size="28" />
               <div class="msg-content">
                 <div class="msg-name" :class="{ mine: msg.from_user_id === authStore.user?.id }">
                   {{ msg.from_user_id === authStore.user?.id ? '我' : activeContactName }}
@@ -104,6 +123,7 @@
                   {{ formatMessageTime(msg.created_at) }}
                 </div>
               </div>
+            </div>
             </div>
           </div>
 
@@ -551,5 +571,45 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 1fr 90px;
   gap: 10px;
+}
+
+.ai-match-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  width: 100%;
+}
+.ai-match-card {
+  width: 90%;
+  max-width: 400px;
+  background: #eff6ff;
+  border-radius: 8px;
+  border: 1px solid #dbeafe;
+  text-align: center;
+}
+.ai-match-header {
+  font-weight: 600;
+  color: #1e3a8a;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 15px;
+}
+.ai-match-body {
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.ai-match-body .highlight {
+  font-size: 16px;
+  font-weight: bold;
+  color: #2563eb;
+}
+.ai-match-footer {
+  margin-top: 10px;
+  text-align: center;
 }
 </style>

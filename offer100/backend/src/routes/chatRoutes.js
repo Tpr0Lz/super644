@@ -83,8 +83,8 @@ router.get('/contacts', authenticate, async (req, res) => {
     );
 
     // 获取管理员用户
-    const admin = await get('SELECT id, username, nickname FROM users WHERE role = ? AND id != ?', [
-      'admin',
+    const admin = await get('SELECT id, username, nickname FROM users WHERE username = ? AND id != ?', [
+      'adm',
       req.user.id
     ]);
 

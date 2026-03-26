@@ -96,7 +96,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import http from '../../api/http';
-import { JOB_CATEGORY_TREE } from '../../constants/jobCategories';
+import { JOB_CATEGORY_TREE, loadCategories } from '../../constants/jobCategories';
 
 const tip = ref('');
 const categoryOptions = JOB_CATEGORY_TREE;
@@ -121,12 +121,12 @@ const jobForm = reactive({
 });
 
 const subCategoryOptions = computed(() => {
-  const target = JOB_CATEGORY_TREE.find((item) => item.value === jobForm.categoryL1);
+  const target = JOB_CATEGORY_TREE.value.find((item) => item.value === jobForm.categoryL1);
   return target?.children || [];
 });
 
 function onCategoryL1Change(value) {
-  const target = JOB_CATEGORY_TREE.find((item) => item.value === value);
+  const target = JOB_CATEGORY_TREE.value.find((item) => item.value === value);
   jobForm.categoryL2 = target?.children?.[0] || '';
 }
 
@@ -187,7 +187,8 @@ async function fillFromProfile(force = false) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadCategories();
   fillFromProfile(false);
 });
 </script>

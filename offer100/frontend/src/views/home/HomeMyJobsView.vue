@@ -117,7 +117,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import http from '../../api/http';
-import { JOB_CATEGORY_TREE } from '../../constants/jobCategories';
+import { JOB_CATEGORY_TREE, loadCategories } from '../../constants/jobCategories';
 
 const router = useRouter();
 const jobs = ref([]);
@@ -148,7 +148,7 @@ const editForm = reactive({
 });
 
 const editSubCategoryOptions = computed(() => {
-  const target = JOB_CATEGORY_TREE.find((item) => item.value === editForm.categoryL1);
+  const target = JOB_CATEGORY_TREE.value.find((item) => item.value === editForm.categoryL1);
   return target?.children || [];
 });
 
@@ -166,7 +166,7 @@ function goDetail(jobId) {
 }
 
 function onEditCategoryL1Change(value) {
-  const target = JOB_CATEGORY_TREE.find((item) => item.value === value);
+  const target = JOB_CATEGORY_TREE.value.find((item) => item.value === value);
   editForm.categoryL2 = target?.children?.[0] || '';
 }
 
@@ -175,8 +175,8 @@ function patchEditForm(data) {
   editForm.company = data?.company || '';
   editForm.city = data?.city || '';
   editForm.employmentType = data?.employmentType || '不限';
-  editForm.categoryL1 = data?.categoryL1 || JOB_CATEGORY_TREE[0]?.value || '';
-  const defaultL2 = JOB_CATEGORY_TREE.find((item) => item.value === editForm.categoryL1)?.children?.[0] || '';
+  editForm.categoryL1 = data?.categoryL1 || JOB_CATEGORY_TREE.value[0]?.value || '';
+  const defaultL2 = JOB_CATEGORY_TREE.value.find((item) => item.value === editForm.categoryL1)?.children?.[0] || '';
   editForm.categoryL2 = data?.categoryL2 || defaultL2;
   editForm.salaryRange = data?.salaryRange || '不限';
   editForm.educationRequirement = data?.educationRequirement || '不限';

@@ -8,7 +8,7 @@
       @logout="logout"
     />
 
-    <el-card v-if="isRecruiter" shadow="never" class="sub-nav-card">
+    <el-card v-if="isRecruiter || isAdmin" shadow="never" class="sub-nav-card">
       <el-segmented :model-value="activeSegment" :options="segmentOptions" @change="onSegmentChange" />
     </el-card>
 
@@ -27,6 +27,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 const isRecruiter = computed(() => authStore.activeIdentity === 'recruiter');
+const isAdmin = computed(() => authStore.activeIdentity === 'admin');
 const activeSegment = computed(() => {
   if (route.name === 'home-publish') {
     return 'publish';

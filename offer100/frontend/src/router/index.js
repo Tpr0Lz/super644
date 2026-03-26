@@ -12,9 +12,13 @@ import ChatView from '../views/ChatView.vue';
 import AiAssistantView from '../views/AiAssistantView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import IdentityRegisterView from '../views/IdentityRegisterView.vue';
+import AdminView from '../views/AdminView.vue';
+import AdminJobsView from '../views/admin/AdminJobsView.vue';
+import AdminSeekersView from '../views/admin/AdminSeekersView.vue';
 
 const routes = [
   { path: '/login', name: 'login', component: LoginView },
+  { path: '/admin', name: 'admin', component: AdminView, meta: { requiresAuth: true } },
   {
     path: '/',
     name: 'home',
@@ -38,6 +42,18 @@ const routes = [
         name: 'home-my-jobs',
         component: HomeMyJobsView,
         meta: { requiresAuth: true, identity: 'recruiter' }
+      },
+      {
+        path: 'admin-jobs',
+        name: 'admin-jobs',
+        component: AdminJobsView,
+        meta: { requiresAuth: true, identity: 'admin' }
+      },
+      {
+        path: 'admin-seekers',
+        name: 'admin-seekers',
+        component: AdminSeekersView,
+        meta: { requiresAuth: true, identity: 'admin' }
       }
     ]
   },
@@ -107,11 +123,17 @@ router.beforeEach((to) => {
     return '/';
   }
 
-  if (to.meta.identity && authStore.activeIdentity !== to.meta.identity) {
+if (to.meta.identity && authStore.activeIdentity !== to.meta.identity && authStore.activeIdentity !== 'admin') {
     return '/';
+  }
+
+  // Redirect admin to admin-jobs if they try to access the default home overview
+  if (to.name === 'home-overview' && authStore.activeIdentity === 'admin') {    
+    return '/admin-jobs';
   }
 
   return true;
 });
 
 export default router;
+

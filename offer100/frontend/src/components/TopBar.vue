@@ -9,12 +9,14 @@
         <div class="actions">
           <el-tag type="info" size="large">{{ username }}</el-tag>
           <el-select
+            v-if="activeIdentity !== 'admin'"
             :model-value="activeIdentity"
             class="identity-select"
             @change="$emit('switch-identity', $event)"
           >
             <el-option v-for="item in identities" :key="item" :label="labelMap[item] || item" :value="item" />
           </el-select>
+          <el-tag v-else type="danger" size="large" style="margin-right: 12px; margin-left: 12px;">超级管理员</el-tag>
           <el-button type="primary" @click="$emit('logout')">退出登录</el-button>
         </div>
       </div>
@@ -23,7 +25,8 @@
         <el-menu-item index="/">{{ homeLabel }}</el-menu-item>
         <el-menu-item index="/ai">超级644AI</el-menu-item>
         <el-menu-item index="/profile">个人信息</el-menu-item>
-        <el-menu-item index="/identity-register">注册身份</el-menu-item>
+        <el-menu-item v-if="activeIdentity !== 'admin'" index="/identity-register">注册身份</el-menu-item>
+        <el-menu-item v-if="authStore.user?.username === 'adm'" index="/admin">管理员后台</el-menu-item>
         <el-menu-item index="/chat">
           <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99" type="danger">
             <span>聊天消息</span>
@@ -73,7 +76,10 @@ async function loadUnreadSummary() {
     unreadCount.value = 0;
   }
 }
-const homeLabel = computed(() => (props.activeIdentity === 'recruiter' ? '招聘' : '职位'));
+const homeLabel = computed(() => {
+  if (props.activeIdentity === 'admin') return '系统浏览';
+  return props.activeIdentity === 'recruiter' ? '招聘' : '职位';
+});
 const activeMenu = computed(() => {
   if (route.path.startsWith('/ai')) return '/ai';
   if (route.path.startsWith('/profile')) return '/profile';
@@ -84,7 +90,8 @@ const activeMenu = computed(() => {
 
 const labelMap = {
   recruiter: '招聘人',
-  jobseeker: '求职者'
+  jobseeker: '求职者',
+  admin: '管理员'
 };
 
 onMounted(async () => {

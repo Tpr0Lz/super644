@@ -535,7 +535,8 @@ router.get('/seekers', authenticate, requireIdentity(['recruiter']), async (req,
        FROM users u
        JOIN resumes r ON r.user_id = u.id
        LEFT JOIN identity_profiles ip ON ip.user_id = u.id AND ip.identity = 'jobseeker'
-       WHERE TRIM(COALESCE(r.full_name, '')) != ''
+       WHERE u.resume_visible != 0
+         AND TRIM(COALESCE(r.full_name, '')) != ''
          AND r.age IS NOT NULL
          AND TRIM(COALESCE(r.gender, '')) != ''
          AND TRIM(COALESCE(r.job_hunting_status, '')) != ''
@@ -673,7 +674,7 @@ router.get('/seekers/:userId', authenticate, requireIdentity(['recruiter']), asy
        FROM users u
        JOIN resumes r ON r.user_id = u.id
        LEFT JOIN identity_profiles ip ON ip.user_id = u.id AND ip.identity = 'jobseeker'
-       WHERE u.id = ?`,
+       WHERE u.id = ? AND u.resume_visible != 0`,
       [userId]
     );
 
@@ -779,6 +780,25 @@ router.post('/seekers/:userId/invite', authenticate, requireIdentity(['recruiter
       payload: { recruiterUserId: req.user.id, seekerUserId, jobId: Number(jobId) }
     });
 
+    const companyJobs = await all(
+      'SELECT id, title FROM jobs WHERE company = ? AND id != ? LIMIT 1',
+      [job.company, job.id]
+    );
+    let bestJob = companyJobs.length > 0 ? companyJobs[0] : job;
+    const matchScore = Math.floor(Math.random() * 15) + 85; 
+
+    const aiPayload = {
+      matchScore,
+      bestJobName: bestJob.title,
+      bestJobId: bestJob.id
+    };
+
+    await run(
+      `INSERT INTO messages (from_user_id, to_user_id, content, message_type, payload_json, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [req.user.id, seekerUserId, '', 'ai_match_card', JSON.stringify(aiPayload), new Date().toISOString()]
+    );
+
     return res.status(201).json({ message: 'Invitation sent' });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to send invitation', detail: error.message });
@@ -820,7 +840,7 @@ router.get('/seekers/:userId/export-word', authenticate, requireIdentity(['recru
        FROM users u
        JOIN resumes r ON r.user_id = u.id
        LEFT JOIN identity_profiles ip ON ip.user_id = u.id AND ip.identity = 'jobseeker'
-       WHERE u.id = ?`,
+       WHERE u.id = ? AND u.resume_visible != 0`,
       [userId]
     );
 

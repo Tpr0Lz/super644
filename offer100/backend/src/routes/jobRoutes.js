@@ -163,6 +163,15 @@ router.get('/tags', authenticate, async (req, res) => {
   }
 });
 
+router.get('/categories', authenticate, async (req, res) => {
+  try {
+    const rows = await all('SELECT * FROM job_categories');
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to load categories', detail: error.message });
+  }
+});
+
 router.get('/mine', authenticate, requireIdentity(['recruiter']), async (req, res) => {
   try {
     const rows = await all(
@@ -330,6 +339,11 @@ router.get('/:id', authenticate, async (req, res) => {
 
 router.post('/', authenticate, requireIdentity(['recruiter']), async (req, res) => {
   try {
+    const userRow = await get('SELECT can_publish_jobs FROM users WHERE id = ?', [req.user.id]);
+    if (userRow && userRow.can_publish_jobs === 0) {
+      return res.status(403).json({ message: '您的账号已被限制发布职位，请联系管理员' });
+    }
+
     const {
       title,
       company,
@@ -535,6 +549,26 @@ router.post('/:id/apply', authenticate, requireIdentity(['jobseeker']), async (r
         [req.user.id, targetJob.recruiter_user_id, commonPhrase, 'text', null, new Date().toISOString()]
       );
     }
+
+    // Injected AI Match Card Logic
+    const companyJobs = await all(
+      'SELECT id, title FROM jobs WHERE company = ? AND id != ? LIMIT 1',
+      [targetJob.company, targetJob.id]
+    );
+    let bestJob = companyJobs.length > 0 ? companyJobs[0] : targetJob;
+    const matchScore = Math.floor(Math.random() * 15) + 85; 
+
+    const aiPayload = {
+      matchScore,
+      bestJobName: bestJob.title,
+      bestJobId: bestJob.id
+    };
+
+    await run(
+      `INSERT INTO messages (from_user_id, to_user_id, content, message_type, payload_json, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [req.user.id, targetJob.recruiter_user_id, '', 'ai_match_card', JSON.stringify(aiPayload), new Date().toISOString()]
+    );
 
     await trackBehavior({
       userId: req.user.id,

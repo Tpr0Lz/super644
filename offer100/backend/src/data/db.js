@@ -546,6 +546,15 @@ async function initDb() {
   await ensureColumn('users', 'created_at', 'TEXT');
   await ensureColumn('users', 'status', "TEXT DEFAULT 'active'");
   await ensureColumn('users', 'role', 'TEXT');
+  await ensureColumn('users', 'can_publish_jobs', 'INTEGER DEFAULT 1');
+  await ensureColumn('users', 'resume_visible', 'INTEGER DEFAULT 1');
+  await run(
+    `CREATE TABLE IF NOT EXISTS job_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_l1 TEXT NOT NULL,
+      category_l2 TEXT NOT NULL
+    )`
+  );
 
   await ensureColumn('companies', 'address', 'TEXT');
   await ensureColumn('companies', 'company_size', 'TEXT');
@@ -740,6 +749,33 @@ async function initDb() {
     )`
   );
 
+  async function seedAdmin() {
+    const admin = await get("SELECT id FROM users WHERE username = 'adm'");
+    if (!admin) {
+      const now = new Date().toISOString();
+      await run(
+        `INSERT INTO users (username, password, nickname, role, initial_identity, status, created_at)
+         VALUES ('adm', '123456', 'Admin', 'admin', 'admin', 'active', ?)`,
+         [now]
+      );
+    }
+  }
+
+  async function seedCategories() {
+    const countRow = await get('SELECT COUNT(*) AS count FROM job_categories');
+    if (countRow.count > 0) return;
+    const categories = [
+      { l1: '互联网/ AI', l2: '前端开发（Vue / React）' },
+      { l1: '互联网/ AI', l2: '后端开发（Java / Go / Python）' },
+      { l1: '产品', l2: '增长产品经理' }
+    ];
+    for (const cat of categories) {
+      await run('INSERT INTO job_categories (category_l1, category_l2) VALUES (?, ?)', [cat.l1, cat.l2]);
+    }
+  }
+
+  await seedAdmin();
+  await seedCategories();
   await seedJobs();
   await seedCompanies();
   await seedResumes();

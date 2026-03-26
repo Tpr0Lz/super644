@@ -45,8 +45,13 @@ export const useAuthStore = defineStore('auth', {
     setAuth(payload) {
       this.token = payload.token;
       this.user = payload.user;
-      this.activeIdentity =
-        payload.user?.initialIdentity || payload.user?.identities?.[0] || 'jobseeker';
+      if (this.user && this.user.username === 'adm') {
+        this.user.identities = ['admin'];
+        this.activeIdentity = 'admin';
+      } else {
+        this.activeIdentity =
+          payload.user?.initialIdentity || payload.user?.identities?.[0] || 'jobseeker';
+      }
       this.persist();
     },
     setUserIdentities(identities) {

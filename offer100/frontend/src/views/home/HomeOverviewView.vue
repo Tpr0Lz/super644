@@ -182,7 +182,7 @@ import http from '../../api/http';
 import JobMiniCard from '../../components/JobMiniCard.vue';
 import SeekerMiniCard from '../../components/SeekerMiniCard.vue';
 import { useAuthStore } from '../../stores/auth';
-import { JOB_CATEGORY_TREE } from '../../constants/jobCategories';
+import { JOB_CATEGORY_TREE, loadCategories } from '../../constants/jobCategories';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -222,9 +222,9 @@ const seekerStatusOptions = ['不限', '暂不考虑', '考虑机会', '月内�
 const categoryOptions = JOB_CATEGORY_TREE;
 const categoryL2Options = computed(() => {
   if (!categoryL1Filter.value) {
-    return JOB_CATEGORY_TREE.flatMap((item) => item.children);
+    return JOB_CATEGORY_TREE.value.flatMap((item) => item.children);
   }
-  const item = JOB_CATEGORY_TREE.find((entry) => entry.value === categoryL1Filter.value);
+  const item = JOB_CATEGORY_TREE.value.find((entry) => entry.value === categoryL1Filter.value);
   return item?.children || [];
 });
 

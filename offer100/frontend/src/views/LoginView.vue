@@ -176,26 +176,14 @@ async function submitLogin() {
   tip.value = '';
   
   try {
-    // --- 测试模式：跳过后端请求，直接构造模拟数据 ---
-    const mockData = {
-      uid: 1,               // 对应你数据库中“王大锤”或其他测试账号的 ID
-      username: '测试账号',  // 展示用的用户名
-      token: 'test-token'    // 模拟 token
-    };
-
-    // 将模拟数据存入 authStore
     const { data } = await http.post('/auth/login', {
       username: loginForm.username,
       password: loginForm.password
     });
     authStore.setAuth(data);
-    
-    // 直接跳转到首页
     router.push('/'); 
-    // ------------------------------------------
-    
   } catch (err) {
-    error.value = '测试登录模式出错';
+    error.value = err.response?.data?.message || '登录失败，请检查账号密码';
   } finally {
     loading.value = false;
   }

@@ -3,11 +3,26 @@ const { all, get, run } = require('../data/db');
 const { authenticate } = require('../middleware/auth');
 const { trackBehavior } = require('../services/behaviorService');
 const { emitRecruitmentUpdate } = require('../modules/socketHub');
+const { currentDateTime } = require('../utils/datetime');
 
 const router = express.Router();
 
+function compareContacts(a, b) {
+  if (Number(Boolean(b.is_pinned)) !== Number(Boolean(a.is_pinned))) {
+    return Number(Boolean(b.is_pinned)) - Number(Boolean(a.is_pinned));
+  }
+
+  const timeA = Date.parse(a.last_message_at || '') || 0;
+  const timeB = Date.parse(b.last_message_at || '') || 0;
+  if (timeB !== timeA) {
+    return timeB - timeA;
+  }
+
+  return Number(b.last_message_id || 0) - Number(a.last_message_id || 0);
+}
+
 async function saveMessage({ fromUserId, toUserId, content, messageType = 'text', payload = null }) {
-  const now = new Date().toISOString();
+  const now = currentDateTime();
   const result = await run(
     `INSERT INTO messages (from_user_id, to_user_id, content, message_type, payload_json, is_read, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -79,7 +94,7 @@ router.get('/contacts', authenticate, async (req, res) => {
        WHERE u.id != ? AND COALESCE(uc.is_deleted, 0) = 0
        GROUP BY u.id, u.username, u.nickname, is_pinned, is_deleted
        ORDER BY is_pinned DESC, last_message_at DESC, last_message_id DESC`,
-      [req.user.activeIdentity, req.user.id, req.user.id, req.user.id, req.user.id]
+      [req.user.activeIdentity, req.user.id, req.user.id, req.user.id, req.user.id, req.user.id]
     );
 
     // 获取管理员用户
@@ -87,10 +102,18 @@ router.get('/contacts', authenticate, async (req, res) => {
       'adm',
       req.user.id
     ]);
+    const adminContactState = admin
+      ? await get(
+          `SELECT is_pinned, is_deleted
+           FROM user_contacts
+           WHERE user_id = ? AND contact_user_id = ?`,
+          [req.user.id, admin.id]
+        )
+      : null;
 
     // 检查管理员是否已经在列表中
     const adminInList = rows.some((row) => row.id === admin?.id);
-    if (admin && !adminInList) {
+    if (admin && !adminInList && !Number(adminContactState?.is_deleted || 0)) {
       rows.push({
         id: admin.id,
         username: admin.username,
@@ -99,10 +122,11 @@ router.get('/contacts', authenticate, async (req, res) => {
         last_message_at: null,
         last_message_id: null,
         unread_count: 0,
-        is_pinned: 0,
+        is_pinned: Number(adminContactState?.is_pinned || 0),
         is_deleted: 0
       });
     }
+    rows.sort(compareContacts);
 
     res.json(
       rows.map((row) => ({
@@ -149,10 +173,14 @@ router.get('/users/:userId', authenticate, async (req, res) => {
                   LIMIT 1
                 ),
                 ''
-              ) AS avatar_url
+              ) AS avatar_url,
+              COALESCE(uc.is_deleted, 0) AS is_deleted,
+              COALESCE(uc.is_pinned, 0) AS is_pinned
        FROM users u
+       LEFT JOIN user_contacts uc
+         ON uc.user_id = ? AND uc.contact_user_id = u.id
        WHERE u.id = ?`,
-      [req.user.activeIdentity, userId]
+      [req.user.activeIdentity, req.user.id, userId]
     );
 
     if (!row) {
@@ -165,7 +193,9 @@ router.get('/users/:userId', authenticate, async (req, res) => {
       nickname: row.nickname || row.username,
       avatarUrl: row.avatar_url || '',
       lastMessageAt: '',
-      unreadCount: 0
+      unreadCount: 0,
+      isPinned: Boolean(row.is_pinned),
+      isDeleted: Boolean(row.is_deleted)
     });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to load target user', detail: error.message });
@@ -322,6 +352,19 @@ router.post('/messages', authenticate, async (req, res) => {
       payload
     });
 
+    await run(
+      `INSERT INTO user_contacts (user_id, contact_user_id, is_pinned, is_deleted, last_message_at, created_at)
+       VALUES (?, ?, 0, 0, ?, ?)
+       ON DUPLICATE KEY UPDATE last_message_at = VALUES(last_message_at)`,
+      [req.user.id, Number(toUserId), saved.created_at, saved.created_at]
+    );
+    await run(
+      `INSERT INTO user_contacts (user_id, contact_user_id, is_pinned, is_deleted, last_message_at, created_at)
+       VALUES (?, ?, 0, 0, ?, ?)
+       ON DUPLICATE KEY UPDATE last_message_at = VALUES(last_message_at)`,
+      [Number(toUserId), req.user.id, saved.created_at, saved.created_at]
+    );
+
     await trackBehavior({
       userId: req.user.id,
       role: req.user.activeIdentity,
@@ -384,13 +427,13 @@ router.post('/contacts/:contactId/pin', authenticate, async (req, res) => {
 
     if (existing) {
       await run(
-        'UPDATE user_contacts SET is_pinned = 1 WHERE user_id = ? AND contact_user_id = ?',
+        'UPDATE user_contacts SET is_pinned = 1, is_deleted = 0 WHERE user_id = ? AND contact_user_id = ?',
         [req.user.id, contactId]
       );
     } else {
       await run(
         'INSERT INTO user_contacts (user_id, contact_user_id, is_pinned, is_deleted, created_at) VALUES (?, ?, 1, 0, ?)',
-        [req.user.id, contactId, new Date().toISOString()]
+        [req.user.id, contactId, currentDateTime()]
       );
     }
 
@@ -415,13 +458,13 @@ router.post('/contacts/:contactId/unpin', authenticate, async (req, res) => {
 
     if (existing) {
       await run(
-        'UPDATE user_contacts SET is_pinned = 0 WHERE user_id = ? AND contact_user_id = ?',
+        'UPDATE user_contacts SET is_pinned = 0, is_deleted = 0 WHERE user_id = ? AND contact_user_id = ?',
         [req.user.id, contactId]
       );
     } else {
       await run(
         'INSERT INTO user_contacts (user_id, contact_user_id, is_pinned, is_deleted, created_at) VALUES (?, ?, 0, 0, ?)',
-        [req.user.id, contactId, new Date().toISOString()]
+        [req.user.id, contactId, currentDateTime()]
       );
     }
 
@@ -459,7 +502,7 @@ router.post('/contacts/:contactId/delete', authenticate, async (req, res) => {
     } else {
       await run(
         'INSERT INTO user_contacts (user_id, contact_user_id, is_pinned, is_deleted, created_at) VALUES (?, ?, 0, 1, ?)',
-        [req.user.id, contactId, new Date().toISOString()]
+        [req.user.id, contactId, currentDateTime()]
       );
     }
 
@@ -490,7 +533,7 @@ router.post('/contacts/:contactId/restore', authenticate, async (req, res) => {
     } else {
       await run(
         'INSERT INTO user_contacts (user_id, contact_user_id, is_pinned, is_deleted, created_at) VALUES (?, ?, 0, 0, ?)',
-        [req.user.id, contactId, new Date().toISOString()]
+        [req.user.id, contactId, currentDateTime()]
       );
     }
 

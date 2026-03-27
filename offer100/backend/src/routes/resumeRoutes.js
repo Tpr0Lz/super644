@@ -3,6 +3,7 @@ const { all, get, run } = require('../data/db');
 const { authenticate, requireIdentity } = require('../middleware/auth');
 const { trackBehavior } = require('../services/behaviorService');
 const { emitRecruitmentUpdate } = require('../modules/socketHub');
+const { currentDateTime } = require('../utils/datetime');
 
 const router = express.Router();
 const JOB_HUNTING_STATUS = ['随时到岗', '月内到岗', '考虑机会', '暂不考虑'];
@@ -280,7 +281,7 @@ router.put('/me', authenticate, requireIdentity(['jobseeker']), async (req, res)
       commonPhrase
     } = req.body;
 
-    const now = new Date().toISOString();
+    const now = currentDateTime();
     if (jobHuntingStatus && !JOB_HUNTING_STATUS.includes(jobHuntingStatus)) {
       return res.status(400).json({ message: '求职状态不合法' });
     }
@@ -735,7 +736,7 @@ router.post('/seekers/:userId/invite', authenticate, requireIdentity(['recruiter
         commonPhrase,
         'sent',
         JSON.stringify(snapshotJob),
-        new Date().toISOString()
+        currentDateTime()
       ]
     );
 
@@ -754,7 +755,7 @@ router.post('/seekers/:userId/invite', authenticate, requireIdentity(['recruiter
         '',
         'invitation_card',
         JSON.stringify(cardPayload),
-        new Date().toISOString()
+        currentDateTime()
       ]
     );
 
@@ -762,7 +763,7 @@ router.post('/seekers/:userId/invite', authenticate, requireIdentity(['recruiter
       await run(
         `INSERT INTO messages (from_user_id, to_user_id, content, message_type, payload_json, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [req.user.id, seekerUserId, commonPhrase, 'text', null, new Date().toISOString()]
+        [req.user.id, seekerUserId, commonPhrase, 'text', null, currentDateTime()]
       );
     }
 
@@ -796,7 +797,7 @@ router.post('/seekers/:userId/invite', authenticate, requireIdentity(['recruiter
     await run(
       `INSERT INTO messages (from_user_id, to_user_id, content, message_type, payload_json, created_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.user.id, seekerUserId, '', 'ai_match_card', JSON.stringify(aiPayload), new Date().toISOString()]
+      [req.user.id, seekerUserId, '', 'ai_match_card', JSON.stringify(aiPayload), currentDateTime()]
     );
 
     return res.status(201).json({ message: 'Invitation sent' });

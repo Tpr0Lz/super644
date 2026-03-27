@@ -10,10 +10,11 @@ const reportRoutes = require('./routes/reportRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const resumeRoutes = require('./routes/resumeRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 const identityRoutes = require('./routes/identityRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const { setSocketIo } = require('./modules/socketHub');
-const { initDb, dbPath } = require('./data/db');
+const { initDb, dbInfo } = require('./data/db');
 
 const app = express();
 const server = http.createServer(app);
@@ -33,6 +34,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'offer100-backend' });
 });
 
+app.use('/api/ai', aiRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/identity', identityRoutes);
 app.use('/api/jobs', jobRoutes);
@@ -57,7 +59,7 @@ async function startServer() {
     await initDb();
     server.listen(PORT, () => {
       console.log(`Offer100 backend running at http://localhost:${PORT}`);
-      console.log(`SQLite DB path: ${dbPath}`);
+      console.log(`MySQL connection: ${dbInfo}`);
     });
   } catch (error) {
     console.error('Failed to initialize database:', error.message);

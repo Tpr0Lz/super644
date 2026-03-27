@@ -26,11 +26,11 @@
 
 ## 技术栈
 - 前端：Vue3 + Vite + Pinia + Vue Router + Axios + Socket.IO Client
-- 后端：Node.js + Express + JWT + Socket.IO
+- 后端：Node.js + Express + JWT + Socket.IO + MySQL
 - 报表：CSV 导出（后续可替换 FreeReportBuilder）
 
 ## 可扩展方向
-- 接入 MySQL 和 ORM
+- 接入 ORM，完善迁移与版本化管理
 - 增加岗位搜索推荐算法
 - 引入 AI 职业咨询接口（预留）
 - 对接企业 HR 系统与消息通知渠道

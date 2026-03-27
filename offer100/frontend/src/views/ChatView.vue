@@ -21,6 +21,7 @@
           >
             <el-button
               class="chat-user"
+              :class="{ active: u.id === activeContactId }"
               type="default"
               plain
               @click="selectContact(u.id)"
@@ -175,9 +176,7 @@ async function loadMyAvatar() {
 
 async function loadContacts() {
   const { data } = await http.get('/chat/contacts');
-  contacts.value = Array.isArray(data)
-    ? [...data].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0))
-    : [];
+  contacts.value = Array.isArray(data) ? data : [];
 
   const routeContactId = Number(route.query.with || 0);
   if (routeContactId && contacts.value.some((item) => item.id === routeContactId)) {
@@ -189,9 +188,15 @@ async function loadContacts() {
   if (routeContactId && !contacts.value.some((item) => item.id === routeContactId)) {
     try {
       const { data: target } = await http.get(`/chat/users/${routeContactId}`);
-      contacts.value = [target, ...contacts.value];
-      activeContactId.value = routeContactId;
-      await loadMessages();
+      if (!target?.isDeleted) {
+        contacts.value = [target, ...contacts.value];
+        activeContactId.value = routeContactId;
+        await loadMessages();
+        return;
+      }
+      if (String(route.query.with || '') === String(routeContactId)) {
+        await router.replace({ path: '/chat' });
+      }
       return;
     } catch (error) {
       // ignore invalid route target and keep empty state
@@ -272,6 +277,9 @@ async function deleteContact(userId) {
     if (activeContactId.value === userId) {
       activeContactId.value = 0;
       messages.value = [];
+    }
+    if (String(route.query.with || '') === String(userId)) {
+      await router.replace({ path: '/chat' });
     }
     await loadContacts();
   } catch (error) {
@@ -458,7 +466,8 @@ onUnmounted(() => {
 }
 
 .chat-user.active {
-  border-color: #7fb2ff;
+  border-color: #2563eb;
+  box-shadow: inset 0 0 0 1px #2563eb;
   background: #edf5ff;
 }
 

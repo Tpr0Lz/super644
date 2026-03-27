@@ -1,7 +1,8 @@
 const { run, get, all } = require('../data/db');
+const { currentDateTime } = require('../utils/datetime');
 
 async function trackBehavior({ userId, role, action, targetType, targetId, extra = {} }) {
-  const createdAt = new Date().toISOString();
+  const createdAt = currentDateTime();
   const result = await run(
     'INSERT INTO behavior_logs (user_id, role, action, target_type, target_id, extra, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [userId, role, action, targetType, targetId, JSON.stringify(extra), createdAt]

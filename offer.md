@@ -17,7 +17,7 @@ Offer100
 
 ## 技术要求
 - 前端：Vue
-- 后端：Node.js + Express
+- 后端：Node.js + Express + MySQL
 - 功能点：
   - 基于角色的用户权限管理
   - Socket 实时通信

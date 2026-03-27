@@ -10,8 +10,9 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
-    "axios": "^1.9.0",
+    "axios": "^1.13.6",
     "element-plus": "^2.13.6",
+    "marked": "^17.0.5",
     "offer100-frontend": "file:",
     "pinia": "^3.0.1",
     "socket.io-client": "^4.8.1",

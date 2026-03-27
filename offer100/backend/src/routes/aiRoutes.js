@@ -15,23 +15,6 @@ function getCozeHeaders() {
   };
 }
 
-function normalizeTags(rawTags) {
-  if (!rawTags) {
-    return '';
-  }
-
-  try {
-    const parsed = JSON.parse(rawTags);
-    if (Array.isArray(parsed)) {
-      return parsed.join(',');
-    }
-  } catch (error) {
-    // ignore json parse failure and fall back to string value
-  }
-
-  return String(rawTags);
-}
-
 router.post('/chat', async (req, res) => {
   const { content, userId: manualUserId } = req.body;
   const userId = String(manualUserId || 'anonymous');
@@ -126,7 +109,7 @@ router.post('/chat', async (req, res) => {
 router.get('/sync-data', async (req, res) => {
   try {
     const jobRows = await all(
-      `SELECT id, title, salary_range, city, tags, description, publish_at
+      `SELECT id, title, salary_range, city, description, publish_at
        FROM jobs
        ORDER BY id DESC
        LIMIT 50`
@@ -134,7 +117,7 @@ router.get('/sync-data', async (req, res) => {
 
     const userRows = await all(
       `SELECT u.id, u.username, u.nickname, u.role,
-              r.full_name, r.expected_salary, r.location, r.skills, r.experience
+              r.full_name, r.expected_salary, r.location, r.strengths, r.experience
        FROM users u
        LEFT JOIN resumes r ON r.user_id = u.id
        ORDER BY u.id DESC
@@ -146,7 +129,7 @@ router.get('/sync-data', async (req, res) => {
       job_name: row.title,
       salary_range: row.salary_range || '',
       location: row.city || '',
-      tech_stack: normalizeTags(row.tags),
+      tech_stack: row.description || '',
       description: row.description || '',
       create_time: row.publish_at || ''
     }));
@@ -156,7 +139,7 @@ router.get('/sync-data', async (req, res) => {
       username: row.full_name || row.nickname || row.username,
       expect_salary: row.expected_salary || '不限',
       current_location: row.location || '',
-      skills: row.skills || '',
+      skills: row.strengths || '',
       experience: row.experience || '',
       role_type: row.role === 'recruiter' ? 1 : 0
     }));

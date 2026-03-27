@@ -10,6 +10,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const resumeRoutes = require('./routes/resumeRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 const identityRoutes = require('./routes/identityRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const { setSocketIo } = require('./modules/socketHub');
@@ -33,6 +34,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'offer100-backend' });
 });
 
+app.use('/api/ai', aiRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/identity', identityRoutes);
 app.use('/api/jobs', jobRoutes);

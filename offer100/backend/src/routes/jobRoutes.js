@@ -551,26 +551,6 @@ router.post('/:id/apply', authenticate, requireIdentity(['jobseeker']), async (r
       );
     }
 
-    // Injected AI Match Card Logic
-    const companyJobs = await all(
-      'SELECT id, title FROM jobs WHERE company = ? AND id != ? LIMIT 1',
-      [targetJob.company, targetJob.id]
-    );
-    let bestJob = companyJobs.length > 0 ? companyJobs[0] : targetJob;
-    const matchScore = Math.floor(Math.random() * 15) + 85; 
-
-    const aiPayload = {
-      matchScore,
-      bestJobName: bestJob.title,
-      bestJobId: bestJob.id
-    };
-
-    await run(
-      `INSERT INTO messages (from_user_id, to_user_id, content, message_type, payload_json, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.user.id, targetJob.recruiter_user_id, '', 'ai_match_card', JSON.stringify(aiPayload), currentDateTime()]
-    );
-
     await trackBehavior({
       userId: req.user.id,
       role: req.user.activeIdentity,

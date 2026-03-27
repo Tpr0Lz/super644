@@ -64,7 +64,7 @@
               </option>
             </select>
           </label>
-          <button @click="inviteSeeker">邀请应聘（自动发送岗位卡片+常用语）</button>
+          <button @click="inviteSeeker">邀请应聘（自动发送岗位卡片和常用语）</button>
           <button @click="openChat">与求职者聊天</button>
           <button @click="exportSeekerWord">导出简历 Word</button>
           <router-link to="/">返回首页</router-link>
@@ -107,7 +107,7 @@ async function inviteSeeker() {
   }
   try {
     await http.post(`/resume/seekers/${route.params.userId}/invite`, { jobId: Number(selectedJobId.value) });
-    tip.value = '邀请已发送，并自动发送岗位组件和常用语';
+    tip.value = '邀请已发送，并自动发送岗位卡片和常用语';
   } catch (error) {
     tip.value = error.response?.data?.message || '邀请失败';
   }

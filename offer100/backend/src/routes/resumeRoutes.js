@@ -781,25 +781,6 @@ router.post('/seekers/:userId/invite', authenticate, requireIdentity(['recruiter
       payload: { recruiterUserId: req.user.id, seekerUserId, jobId: Number(jobId) }
     });
 
-    const companyJobs = await all(
-      'SELECT id, title FROM jobs WHERE company = ? AND id != ? LIMIT 1',
-      [job.company, job.id]
-    );
-    let bestJob = companyJobs.length > 0 ? companyJobs[0] : job;
-    const matchScore = Math.floor(Math.random() * 15) + 85; 
-
-    const aiPayload = {
-      matchScore,
-      bestJobName: bestJob.title,
-      bestJobId: bestJob.id
-    };
-
-    await run(
-      `INSERT INTO messages (from_user_id, to_user_id, content, message_type, payload_json, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.user.id, seekerUserId, '', 'ai_match_card', JSON.stringify(aiPayload), currentDateTime()]
-    );
-
     return res.status(201).json({ message: 'Invitation sent' });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to send invitation', detail: error.message });

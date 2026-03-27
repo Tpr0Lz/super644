@@ -7,7 +7,7 @@
           <p>仿 BOSS 模式：同账号可切换招聘人 / 求职者身份</p>
         </div>
         <div class="actions">
-          <el-tag type="info" size="large">{{ username }}</el-tag>
+          <el-tag type="info" size="large">{{ displayUsername }}</el-tag>
           <el-select
             v-if="activeIdentity !== 'admin'"
             :model-value="activeIdentity"
@@ -65,6 +65,10 @@ const route = useRoute();
 const authStore = useAuthStore();
 const unreadCount = ref(0);
 let socket;
+
+const displayUsername = computed(() => {
+  return props.username || authStore.user?.nickname || authStore.user?.username || '未登录';
+});
 
 async function loadUnreadSummary() {
   // 更加严格的判断：必须有 token 且长度大于 10（排除掉 'undefined' 或 'null' 字符串）

@@ -1,7 +1,7 @@
 ﻿<template>
   <main class="page">
     <TopBar
-      :username="authStore.user?.username"
+      :username="authStore.user?.nickname || authStore.user?.username"
       :active-identity="authStore.activeIdentity"
       :identities="authStore.identities"
       @switch-identity="switchIdentity"

@@ -184,7 +184,11 @@ async function submitLogin() {
     };
 
     // 将模拟数据存入 authStore
-    authStore.setAuth(mockData); 
+    const { data } = await http.post('/auth/login', {
+      username: loginForm.username,
+      password: loginForm.password
+    });
+    authStore.setAuth(data);
     
     // 直接跳转到首页
     router.push('/'); 

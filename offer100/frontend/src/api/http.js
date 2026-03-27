@@ -19,4 +19,18 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const authStore = useAuthStore();
+      authStore.logout();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default http;

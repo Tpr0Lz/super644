@@ -1,6 +1,6 @@
 <template>
   <main class="page">
-    <TopBar :username="authStore.user?.username" :role="authStore.role" @logout="logout" />
+    <TopBar :username="authStore.user?.nickname || authStore.user?.username" :role="authStore.role" @logout="logout" />
 
     <section class="panel">
       <h2>职位列表</h2>

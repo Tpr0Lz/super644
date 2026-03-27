@@ -9,16 +9,32 @@ function loadFromStorage() {
   }
   try {
     const parsed = JSON.parse(raw);
+    const user =
+      parsed.user ||
+      (parsed.username
+        ? {
+            id: parsed.uid || parsed.id,
+            username: parsed.username,
+            nickname: parsed.nickname || parsed.username,
+            identities: parsed.identities || []
+          }
+        : null);
+    const token = parsed.token === 'test-token' ? '' : parsed.token || '';
+    if (!token) {
+      localStorage.removeItem(STORAGE_KEY);
+      return { token: '', user: null, activeIdentity: 'jobseeker' };
+    }
     return {
-      token: parsed.token || '',
-      user: parsed.user || null,
+      token,
+      user,
       activeIdentity:
         parsed.activeIdentity ||
-        parsed.user?.initialIdentity ||
-        parsed.user?.identities?.[0] ||
+        user?.initialIdentity ||
+        user?.identities?.[0] ||
         'jobseeker'
     };
   } catch (error) {
+    localStorage.removeItem(STORAGE_KEY);
     return { token: '', user: null, activeIdentity: 'jobseeker' };
   }
 }
@@ -31,7 +47,7 @@ export const useAuthStore = defineStore('auth', {
     ...loadFromStorage()
   }),
   getters: {
-    isLoggedIn: (state) => Boolean(state.token),
+    isLoggedIn: (state) => Boolean(state.token && state.user?.username),
     identities: (state) => state.user?.identities || [],
     role: (state) => state.activeIdentity
   },
@@ -44,13 +60,13 @@ export const useAuthStore = defineStore('auth', {
     },
     setAuth(payload) {
       this.token = payload.token;
-      this.user = payload.user;
+      this.user = payload.user || (payload.username ? { id: payload.uid || payload.id, username: payload.username } : null);
       if (this.user && this.user.username === 'adm') {
         this.user.identities = ['admin'];
         this.activeIdentity = 'admin';
       } else {
         this.activeIdentity =
-          payload.user?.initialIdentity || payload.user?.identities?.[0] || 'jobseeker';
+          this.user?.initialIdentity || this.user?.identities?.[0] || 'jobseeker';
       }
       this.persist();
     },

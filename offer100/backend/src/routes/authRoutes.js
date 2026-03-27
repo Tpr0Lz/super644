@@ -1,6 +1,7 @@
 const express = require('express');
 const { get, run } = require('../data/db');
 const { signToken } = require('../utils/token');
+const { currentDateTime } = require('../utils/datetime');
 
 const router = express.Router();
 const JOB_HUNTING_STATUS = ['随时到岗', '月内到岗', '考虑机会', '暂不考虑'];
@@ -62,7 +63,7 @@ router.post('/register', async (req, res) => {
 
     const identities = normalizeIdentities(initialIdentity);
     const role = initialIdentity;
-    const now = new Date().toISOString();
+    const now = currentDateTime();
 
     const created = await run(
       `INSERT INTO users (

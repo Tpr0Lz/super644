@@ -13,7 +13,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const identityRoutes = require('./routes/identityRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const { setSocketIo } = require('./modules/socketHub');
-const { initDb, dbPath } = require('./data/db');
+const { initDb, dbInfo } = require('./data/db');
 
 const app = express();
 const server = http.createServer(app);
@@ -57,7 +57,7 @@ async function startServer() {
     await initDb();
     server.listen(PORT, () => {
       console.log(`Offer100 backend running at http://localhost:${PORT}`);
-      console.log(`SQLite DB path: ${dbPath}`);
+      console.log(`MySQL connection: ${dbInfo}`);
     });
   } catch (error) {
     console.error('Failed to initialize database:', error.message);

@@ -28,11 +28,26 @@
           <el-table :data="users" border style="width: 100%">
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column prop="username" label="用户名" />
+            <el-table-column prop="nickname" label="昵称" />
             <el-table-column prop="role" label="角色" />
+            <el-table-column label="发布权限" width="100">
+              <template #default="{ row }">
+                <el-tag :type="row.canPublishJobs ? 'success' : 'warning'">
+                  {{ row.canPublishJobs ? '正常' : '已禁用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="简历可见" width="100">
+              <template #default="{ row }">
+                <el-tag :type="row.resumeVisible ? 'success' : 'info'">
+                  {{ row.resumeVisible ? '可见' : '已隐藏' }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column label="操作" width="220">
               <template #default="{ row }">
-                <el-button type="warning" size="small" @click="disablePublish(row.id)">禁发岗位</el-button>
-                <el-button type="info" size="small" @click="hideResume(row.id)">隐藏简历</el-button>
+                <el-button type="warning" size="small" :disabled="row.role === 'admin'" @click="disablePublish(row.id)">禁发岗位</el-button>
+                <el-button type="info" size="small" :disabled="row.role === 'admin'" @click="hideResume(row.id)">隐藏简历</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -167,7 +182,7 @@ function logout() {
 }
 
 onMounted(() => {
-  if (!authStore.user || authStore.user.username !== 'adm') {
+  if (!authStore.user || (authStore.user.role !== 'admin' && authStore.user.username !== 'adm')) {
     ElMessage.error('无权访问');
     router.push('/');
     return;

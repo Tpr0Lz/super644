@@ -2,6 +2,7 @@
 const { get, run } = require('../data/db');
 const { authenticate } = require('../middleware/auth');
 const { emitRecruitmentUpdate } = require('../modules/socketHub');
+const { currentDateTime } = require('../utils/datetime');
 
 const router = express.Router();
 const JOB_HUNTING_STATUS = ['随时到岗', '月内到岗', '考虑机会', '暂不考虑'];
@@ -154,7 +155,7 @@ router.get('/me', authenticate, async (req, res) => {
 
 router.put('/me', authenticate, async (req, res) => {
   try {
-    const now = new Date().toISOString();
+    const now = currentDateTime();
     const identity = req.user.activeIdentity;
     const {
       nickname,
@@ -425,7 +426,7 @@ router.post('/register-identity', authenticate, async (req, res) => {
       return res.status(409).json({ message: '该身份已注册' });
     }
 
-    const now = new Date().toISOString();
+    const now = currentDateTime();
     if (identity === 'recruiter') {
       if (!recruiterProfile.companyName || !recruiterProfile.companyAddress || !recruiterProfile.companySize) {
         return res.status(400).json({ message: '招聘者身份需要公司名称、地址、规模' });

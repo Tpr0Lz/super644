@@ -10,6 +10,31 @@ router.use(authenticate, (req, res, next) => {
   next();
 });
 
+router.get('/users', async (req, res) => {
+  try {
+    const rows = await all(
+      `SELECT id, username, nickname, role, status, can_publish_jobs, resume_visible, created_at
+       FROM users
+       ORDER BY id ASC`
+    );
+
+    res.json(
+      rows.map((row) => ({
+        id: row.id,
+        username: row.username,
+        nickname: row.nickname || row.username,
+        role: row.role,
+        status: row.status || 'active',
+        canPublishJobs: Number(row.can_publish_jobs ?? 1) !== 0,
+        resumeVisible: Number(row.resume_visible ?? 1) !== 0,
+        createdAt: row.created_at || ''
+      }))
+    );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.delete('/jobs/:id', async (req, res) => {
   try {
     await run('DELETE FROM jobs WHERE id = ?', [req.params.id]);

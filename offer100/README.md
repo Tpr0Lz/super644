@@ -3,7 +3,7 @@
 ## 1. 项目简介
 Offer100 面向大学生与社会求职者，提供招聘岗位、企业动态、人才需求统计与就业指导服务。
 
-后端数据库：SQLite（文件库，便于本地快速启动）
+后端数据库：MySQL（支持通过 `.env` 连接本地或云端实例）
 
 当前版本实现：
 - 同账号双身份切换（recruiter / jobseeker）
@@ -100,4 +100,4 @@ npm run dev
 - `POST /api/ai/job-match-score`：对职位进行匹配度评分
 
 ## 9. 说明
-该版本使用 SQLite 文件数据库，便于课程演示和功能联调。后续可替换为 MySQL/PostgreSQL，并接入 Redis、消息队列与更完整的报表系统（如 FreeReportBuilder 或替代方案）。
+该版本默认通过后端 `.env` 连接 MySQL，便于本地开发与云端部署。后续可继续接入 Redis、消息队列与更完整的报表系统（如 FreeReportBuilder 或替代方案）。

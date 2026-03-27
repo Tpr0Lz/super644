@@ -3,6 +3,7 @@ const { all, get, run } = require('../data/db');
 const { authenticate, requireIdentity } = require('../middleware/auth');
 const { trackBehavior } = require('../services/behaviorService');
 const { emitRecruitmentUpdate } = require('../modules/socketHub');
+const { currentDateTime, currentDate } = require('../utils/datetime');
 
 const router = express.Router();
 const DEFAULT_JOBSEEKER_PHRASE = '你好，我对贵公司的该岗位很感兴趣，想跟您详细聊聊';
@@ -360,7 +361,7 @@ router.post('/', authenticate, requireIdentity(['recruiter']), async (req, res) 
       companyAddress = '',
       companyIntro = ''
     } = req.body;
-    const publishAt = new Date().toISOString().slice(0, 10);
+    const publishAt = currentDate();
 
     const duplicate = await get(
       `SELECT id FROM jobs
@@ -427,13 +428,13 @@ router.post('/', authenticate, requireIdentity(['recruiter']), async (req, res) 
         `UPDATE companies
          SET name = ?, address = ?, company_size = ?, intro = ?, updated_at = ?
          WHERE user_id = ?`,
-        [company, companyAddress || '', companySize || '不限', companyIntro || '', new Date().toISOString(), req.user.id]
+        [company, companyAddress || '', companySize || '不限', companyIntro || '', currentDateTime(), req.user.id]
       );
     } else {
       await run(
         `INSERT INTO companies (user_id, name, intro, website, address, company_size, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [req.user.id, company, companyIntro || '', '', companyAddress || '', companySize || '不限', new Date().toISOString()]
+        [req.user.id, company, companyIntro || '', '', companyAddress || '', companySize || '不限', currentDateTime()]
       );
     }
 
@@ -512,7 +513,7 @@ router.post('/:id/apply', authenticate, requireIdentity(['jobseeker']), async (r
         commonPhrase,
         'pending',
         JSON.stringify(snapshotProfile),
-        new Date().toISOString()
+        currentDateTime()
       ]
     );
 
@@ -538,7 +539,7 @@ router.post('/:id/apply', authenticate, requireIdentity(['jobseeker']), async (r
         '',
         'application_card',
         JSON.stringify(cardPayload),
-        new Date().toISOString()
+        currentDateTime()
       ]
     );
 
@@ -546,7 +547,7 @@ router.post('/:id/apply', authenticate, requireIdentity(['jobseeker']), async (r
       await run(
         `INSERT INTO messages (from_user_id, to_user_id, content, message_type, payload_json, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [req.user.id, targetJob.recruiter_user_id, commonPhrase, 'text', null, new Date().toISOString()]
+        [req.user.id, targetJob.recruiter_user_id, commonPhrase, 'text', null, currentDateTime()]
       );
     }
 
@@ -567,7 +568,7 @@ router.post('/:id/apply', authenticate, requireIdentity(['jobseeker']), async (r
     await run(
       `INSERT INTO messages (from_user_id, to_user_id, content, message_type, payload_json, created_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.user.id, targetJob.recruiter_user_id, '', 'ai_match_card', JSON.stringify(aiPayload), new Date().toISOString()]
+      [req.user.id, targetJob.recruiter_user_id, '', 'ai_match_card', JSON.stringify(aiPayload), currentDateTime()]
     );
 
     await trackBehavior({

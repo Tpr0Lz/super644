@@ -115,7 +115,16 @@ router.delete('/jobs/:id', async (req, res) => {
 router.put('/users/:id/disable-publish', async (req, res) => {
   try {
     await run('UPDATE users SET can_publish_jobs = 0 WHERE id = ?', [req.params.id]);
-    res.json({ success: true });
+    res.json({ success: true, canPublishJobs: false });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/users/:id/enable-publish', async (req, res) => {
+  try {
+    await run('UPDATE users SET can_publish_jobs = 1 WHERE id = ?', [req.params.id]);
+    res.json({ success: true, canPublishJobs: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -124,7 +133,16 @@ router.put('/users/:id/disable-publish', async (req, res) => {
 router.put('/users/:id/hide-resume', async (req, res) => {
   try {
     await run('UPDATE users SET resume_visible = 0 WHERE id = ?', [req.params.id]);
-    res.json({ success: true });
+    res.json({ success: true, resumeVisible: false });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/users/:id/show-resume', async (req, res) => {
+  try {
+    await run('UPDATE users SET resume_visible = 1 WHERE id = ?', [req.params.id]);
+    res.json({ success: true, resumeVisible: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -46,8 +46,22 @@
             </el-table-column>
             <el-table-column label="操作" width="220">
               <template #default="{ row }">
-                <el-button type="warning" size="small" :disabled="row.role === 'admin'" @click="disablePublish(row.id)">禁发岗位</el-button>
-                <el-button type="info" size="small" :disabled="row.role === 'admin'" @click="hideResume(row.id)">隐藏简历</el-button>
+                <el-button
+                  :type="row.canPublishJobs ? 'warning' : 'success'"
+                  size="small"
+                  :disabled="row.role === 'admin'"
+                  @click="togglePublish(row)"
+                >
+                  {{ row.canPublishJobs ? '禁发岗位' : '允许发布' }}
+                </el-button>
+                <el-button
+                  :type="row.resumeVisible ? 'info' : 'success'"
+                  size="small"
+                  :disabled="row.role === 'admin'"
+                  @click="toggleResume(row)"
+                >
+                  {{ row.resumeVisible ? '隐藏简历' : '显示简历' }}
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -140,19 +154,25 @@ async function deleteJob(id) {
   }
 }
 
-async function disablePublish(id) {
+async function togglePublish(row) {
   try {
-    await http.put(`/admin/users/${id}/disable-publish`);
-    ElMessage.success('已禁止发布');
+    const nextCanPublish = !row.canPublishJobs;
+    const path = nextCanPublish ? 'enable-publish' : 'disable-publish';
+    await http.put(`/admin/users/${row.id}/${path}`);
+    row.canPublishJobs = nextCanPublish;
+    ElMessage.success(nextCanPublish ? '已允许发布岗位' : '已禁止发布岗位');
   } catch (err) {
     ElMessage.error('操作失败');
   }
 }
 
-async function hideResume(id) {
+async function toggleResume(row) {
   try {
-    await http.put(`/admin/users/${id}/hide-resume`);
-    ElMessage.success('已隐藏简历');
+    const nextResumeVisible = !row.resumeVisible;
+    const path = nextResumeVisible ? 'show-resume' : 'hide-resume';
+    await http.put(`/admin/users/${row.id}/${path}`);
+    row.resumeVisible = nextResumeVisible;
+    ElMessage.success(nextResumeVisible ? '已显示简历' : '已隐藏简历');
   } catch (err) {
     ElMessage.error('操作失败');
   }

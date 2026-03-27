@@ -35,6 +35,74 @@ router.get('/users', async (req, res) => {
   }
 });
 
+router.get('/seekers', async (req, res) => {
+  try {
+    const rows = await all(
+      `SELECT u.id AS user_id, u.username,
+              r.full_name, r.skills, r.experience, r.education, r.updated_at,
+              r.expected_salary, r.school, COALESCE(r.major, u.major, '') AS major,
+              r.degree, r.graduation_cohort, r.work_experience, r.location, r.contact_phone, r.contact_email,
+              r.age, r.gender, r.strengths, r.job_hunting_status, r.expected_job_type, r.expected_position,
+              r.internship_experience, r.project_experience, r.competition_experience, r.campus_experience,
+              COALESCE(ip.avatar_url, '') AS avatar_url,
+              COALESCE(ip.common_phrase, '') AS common_phrase
+       FROM users u
+       JOIN resumes r ON r.user_id = u.id
+       LEFT JOIN identity_profiles ip ON ip.user_id = u.id AND ip.identity = 'jobseeker'
+       WHERE TRIM(COALESCE(r.full_name, '')) != ''
+         AND r.age IS NOT NULL
+         AND TRIM(COALESCE(r.gender, '')) != ''
+         AND TRIM(COALESCE(r.job_hunting_status, '')) != ''
+         AND TRIM(COALESCE(r.expected_job_type, '')) != ''
+         AND TRIM(COALESCE(r.expected_salary, '')) != ''
+         AND TRIM(COALESCE(r.degree, '')) != ''
+         AND TRIM(COALESCE(r.work_experience, '')) != ''
+         AND TRIM(COALESCE(r.location, '')) != ''
+         AND TRIM(COALESCE(r.strengths, '')) != ''
+         AND TRIM(COALESCE(r.expected_position, '')) != ''
+         AND TRIM(COALESCE(r.project_experience, '')) != ''
+         AND TRIM(COALESCE(r.contact_phone, '')) != ''
+         AND TRIM(COALESCE(r.contact_email, '')) != ''
+       ORDER BY r.updated_at DESC`
+    );
+
+    res.json(
+      rows.map((row) => ({
+        userId: row.user_id,
+        username: row.username,
+        fullName: row.full_name,
+        skills: row.skills || '',
+        experience: row.experience || '',
+        education: row.education || '',
+        age: row.age,
+        gender: row.gender,
+        expectedSalary: row.expected_salary || '',
+        school: row.school || '',
+        major: row.major || '',
+        degree: row.degree || row.education || '',
+        graduationCohort: row.graduation_cohort || '',
+        workExperience: row.work_experience || row.experience || '',
+        location: row.location || '其他',
+        contactPhone: row.contact_phone || '',
+        contactEmail: row.contact_email || '',
+        strengths: row.strengths || '',
+        jobHuntingStatus: row.job_hunting_status || '考虑机会',
+        expectedJobType: row.expected_job_type || '不限',
+        expectedPosition: row.expected_position || '',
+        internshipExperience: row.internship_experience || '',
+        projectExperience: row.project_experience || '',
+        competitionExperience: row.competition_experience || '',
+        campusExperience: row.campus_experience || '',
+        avatarUrl: row.avatar_url || '',
+        commonPhrase: row.common_phrase || '',
+        updatedAt: row.updated_at || ''
+      }))
+    );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.delete('/jobs/:id', async (req, res) => {
   try {
     await run('DELETE FROM jobs WHERE id = ?', [req.params.id]);

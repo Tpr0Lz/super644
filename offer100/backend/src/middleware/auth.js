@@ -10,6 +10,20 @@ function parseIdentities(raw) {
   }
 }
 
+function normalizeIdentities(role, identities) {
+  if (role === 'admin') {
+    const set = new Set(['admin', 'recruiter', 'jobseeker']);
+    identities.forEach((item) => {
+      const value = String(item || '').trim();
+      if (value) {
+        set.add(value);
+      }
+    });
+    return Array.from(set);
+  }
+  return identities.length > 0 ? identities : ['jobseeker'];
+}
+
 async function authenticate(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -31,7 +45,7 @@ async function authenticate(req, res, next) {
 
     const activeIdentityHeader = req.headers['x-active-identity'];
     const identities = parseIdentities(userRow.identities);
-    const normalizedIdentities = identities.length > 0 ? identities : ['jobseeker'];
+    const normalizedIdentities = normalizeIdentities(userRow.role, identities);
     const activeIdentity = normalizedIdentities.includes(activeIdentityHeader)
       ? activeIdentityHeader
       : normalizedIdentities.includes(userRow.initial_identity)

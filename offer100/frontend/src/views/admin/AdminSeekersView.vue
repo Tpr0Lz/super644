@@ -47,12 +47,7 @@ const seekerCards = ref([]);
 
 async function loadData() {
   try {
-    const { data } = await http.get('/seekers', {
-      params: { 
-        page: 1, 
-        limit: 100 
-      }
-    });
+    const { data } = await http.get('/admin/seekers');
     seekerCards.value = data.items || data || [];
   } catch (error) {
     console.error(error);

@@ -1,4 +1,4 @@
-const { run, get, all } = require('../../data/db');
+const { run, get, all } = require('../data/db');
 
 async function trackBehavior({ userId, role, action, targetType, targetId, extra = {} }) {
   const createdAt = new Date().toISOString();

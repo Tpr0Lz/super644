@@ -1,56 +1,92 @@
 <template>
   <main class="page ai-page">
-    <TopBar
-      :username="authStore.user?.nickname || authStore.user?.username"
-      :active-identity="authStore.activeIdentity"
-      :identities="authStore.identities"
-      @switch-identity="switchIdentity"
-      @logout="logout"
-    />
+    <TopBar :username="authStore.user?.nickname || authStore.user?.username" :active-identity="authStore.activeIdentity"
+      :identities="authStore.identities" @switch-identity="switchIdentity" @logout="logout" />
 
     <el-card class="panel ai-shell" shadow="never">
       <div class="hero">
-        <el-avatar :size="68" class="ai-avatar">AI</el-avatar>
-        <div>
-          <h2>超级644AI 助手</h2>
-          <p>这里是预留的 AI 对话入口，后续可直接接入你的模型 API。</p>
-        </div>
-      </div>
+  <el-avatar :size="68" class="ai-avatar">AI</el-avatar>
+  <div>
+  <h2>超级644AI 助手</h2>
+  <p>已成功连接 Coze 智能体，为您提供实时的就业数据分析与建议。</p>
+</div>
+</div>
 
       <div class="chat-mock">
-        <div class="msg ai">
-          <el-avatar :size="34" class="mini-avatar">AI</el-avatar>
-          <div class="bubble">你好，我是超级644AI。你可以问我岗位推荐、简历优化和面试问题。</div>
+        <div v-for="(msg, index) in chatList" :key="index" :class="['msg', msg.role]">
+          <el-avatar v-if="msg.role === 'ai'" :size="34" class="mini-avatar">AI</el-avatar>
+          <div class="bubble">{{ msg.content }}</div>
         </div>
 
-        <div class="msg user">
-          <div class="bubble">我想找一个前端开发岗位，偏向 Vue。</div>
-        </div>
-
-        <div class="msg ai">
+        <div v-if="isLoading" class="msg ai">
           <el-avatar :size="34" class="mini-avatar">AI</el-avatar>
-          <div class="bubble">收到，后续接入模型后我会结合你的经历和岗位标签做精准推荐。</div>
+          <div class="bubble">思考中...</div>
         </div>
       </div>
 
       <div class="composer">
-        <el-input
-          placeholder="输入问题（演示页暂不调用接口）"
-          disabled
-        />
-        <el-button type="primary" disabled>发送</el-button>
+        <el-input v-model="userInput" placeholder="描述你的问题，例如：帮我分析一下数据库里的前端岗位" :disabled="isLoading"
+          @keyup.enter="handleSend" />
+        <el-button type="primary" :loading="isLoading" @click="handleSend">发送</el-button>
       </div>
     </el-card>
   </main>
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import TopBar from '../components/TopBar.vue';
 import { useAuthStore } from '../stores/auth';
+import http from '../api/http'; // 引入封装好的 http 实例
 
 const authStore = useAuthStore();
 const router = useRouter();
+
+const userInput = ref('');
+const isLoading = ref(false);
+const chatList = ref([
+  { role: 'ai', content: '' }
+]);
+
+async function handleSend() {
+  if (!userInput.value.trim() || isLoading.value) return;
+
+  const userMsg = userInput.value;
+  // 1. 把用户的消息推送到界面气泡
+  chatList.value.push({ role: 'user', content: userMsg });
+  userInput.value = '';
+  isLoading.value = true;
+
+  try {
+    // 2. 发起请求
+    const res = await http.post('/ai/chat', {
+      content: userMsg,
+      userId: "5"
+    });
+
+    // 3. 关键：把后端返回的 answer 推送到界面气泡
+    if (res.data && res.data.answer) {
+      chatList.value.push({
+        role: 'ai',
+        content: res.data.answer
+      });
+    } else {
+      chatList.value.push({
+        role: 'ai',
+        content: 'AI 响应成功，但没有返回具体文字内容。'
+      });
+    }
+  } catch (error) {
+    console.error('AI Chat Error:', error);
+    chatList.value.push({
+      role: 'ai',
+      content: '对话失败，请确保后端 server.js 已启动并检查控制台报错。'
+    });
+  } finally {
+    isLoading.value = false;
+  }
+}
 
 function switchIdentity(identity) {
   authStore.setActiveIdentity(identity);

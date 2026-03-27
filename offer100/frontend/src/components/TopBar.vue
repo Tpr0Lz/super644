@@ -62,7 +62,8 @@ const unreadCount = ref(0);
 let socket;
 
 async function loadUnreadSummary() {
-  if (!authStore.token) {
+  // 更加严格的判断：必须有 token 且长度大于 10（排除掉 'undefined' 或 'null' 字符串）
+  if (!authStore.token || authStore.token.length < 10) {
     unreadCount.value = 0;
     return;
   }
@@ -70,6 +71,7 @@ async function loadUnreadSummary() {
     const { data } = await http.get('/chat/unread-summary');
     unreadCount.value = Number(data?.unreadCount || 0);
   } catch (error) {
+    // 如果报错 401，说明 token 无效，静默处理不再报错
     unreadCount.value = 0;
   }
 }
@@ -88,16 +90,18 @@ const labelMap = {
 };
 
 onMounted(async () => {
-  await loadUnreadSummary();
-  socket = io('http://localhost:3001');
-  socket.on('recruitment:update', async (event) => {
-    if (!event?.type) {
-      return;
-    }
-    if (event.type === 'chat_message' || event.type === 'chat_read') {
-      await loadUnreadSummary();
-    }
-  });
+  // 只有明确登录了才去加载消息和启动 socket
+  if (authStore.token && authStore.token.length > 10) {
+    await loadUnreadSummary();
+    socket = io('http://localhost:3001');
+    socket.on('recruitment:update', async (event) => {
+      if (event?.type === 'chat_message' || event?.type === 'chat_read') {
+        await loadUnreadSummary();
+      }
+    });
+  } else {
+    console.log("当前处于测试模式（未登录），已跳过权限接口请求");
+  }
 });
 
 onUnmounted(() => {

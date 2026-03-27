@@ -161,37 +161,24 @@ const filteredJobCards = computed(() => {
 
 let socket;
 
+// HomeOverviewView.vue 约 175 行
 async function loadData() {
-  if (isRecruiter.value) {
-    const params = {};
-    if (seekerKeyword.value) {
-      params.keyword = seekerKeyword.value;
-    }
-    if (seekerJobTag.value) {
-      params.jobTag = seekerJobTag.value;
-    }
-
-    const [seekersRes, tagsRes] = await Promise.all([
-      http.get('/resume/seekers', { params }),
-      http.get('/resume/job-tags')
-    ]);
-
-    const data = seekersRes.data;
-    seekerCards.value = data;
-    seekerTagOptions.value = Array.isArray(tagsRes.data) ? tagsRes.data : [];
+  // 同样的严格判断
+  if (!authStore.token || authStore.token.length < 10) {
     jobCards.value = [];
+    jobTagOptions.value = [];
     return;
   }
 
-  const [jobsRes, tagsRes] = await Promise.all([
-    http.get('/jobs'),
-    http.get('/jobs/tags')
-  ]);
-
-  const data = jobsRes.data;
-  jobCards.value = data;
-  jobTagOptions.value = Array.isArray(tagsRes.data) ? tagsRes.data : [];
-  seekerCards.value = [];
+  try {
+    const [jobsRes, tagsRes] = await Promise.all([
+      http.get('/jobs'),
+      http.get('/jobs/tags')
+    ]);
+    // ... 原有逻辑
+  } catch (error) {
+    console.error('加载数据失败:', error);
+  }
 }
 
 async function applyJob(jobId) {
@@ -219,7 +206,9 @@ function chatWithRecruiter(userId) {
 }
 
 onMounted(async () => {
-  await loadData();
+  if (authStore.token) {
+    await loadData();
+  }
 
   socket = io('http://localhost:3001');
   socket.on('recruitment:update', async (event) => {

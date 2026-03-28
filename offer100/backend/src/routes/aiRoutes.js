@@ -137,13 +137,14 @@ router.get('/sync-data', async (req, res) => {
     }));
 
     const users = userRows.map((row) => ({
-      uid: row.id,
+      uid: String(row.id),
       username: row.full_name || row.nickname || row.username,
       expect_salary: row.expected_salary || '不限',
       current_location: row.location || '',
       skills: row.strengths || '',
       experience: row.experience || '',
-      role_type: row.role === 'recruiter' ? 1 : 0
+      user_identity: row.role === 'recruiter' ? 'recruiter' : 'jobseeker',
+      identity_type: row.role === 'recruiter' ? '招聘者' : '求职者'
     }));
 
     res.json({ success: true, data: { jobs, users } });

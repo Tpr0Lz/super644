@@ -177,6 +177,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { ElNotification } from 'element-plus';
 import { io } from 'socket.io-client';
 import http from '../../api/http';
 import JobMiniCard from '../../components/JobMiniCard.vue';
@@ -393,9 +394,22 @@ async function loadData() {
 async function applyJob(jobId) {
   try {
     await http.post(`/jobs/${jobId}/apply`);
-    tip.value = '投递成功，已发送个人信息组件与常用语';
+    ElNotification({
+      title: '投递成功',
+      message: '已自动向招聘者发送个人信息方片和常用语',
+      type: 'success',
+      duration: 1500,
+      position: 'bottom-right'
+    });
   } catch (error) {
-    tip.value = error.response?.data?.message || '投递失败';
+    const errorMsg = error.response?.data?.message || '投递失败';
+    ElNotification({
+      title: '投递失败',
+      message: errorMsg,
+      type: 'error',
+      duration: 1500,
+      position: 'bottom-right'
+    });
   }
 }
 

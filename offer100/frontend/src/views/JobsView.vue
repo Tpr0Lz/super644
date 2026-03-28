@@ -39,6 +39,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { ElNotification } from 'element-plus';
 import { io } from 'socket.io-client';
 import http from '../api/http';
 import TopBar from '../components/TopBar.vue';
@@ -69,8 +70,23 @@ async function applyJob(jobId) {
   try {
     await http.post(`/jobs/${jobId}/apply`);
     appendEvent(`已投递岗位 #${jobId}`);
+    ElNotification({
+      title: '投递成功',
+      message: '已自动向招聘者发送个人信息卡片和常用语',
+      type: 'success',
+      duration: 1500,
+      position: 'bottom-right'
+    });
   } catch (error) {
-    appendEvent(error.response?.data?.message || '投递失败');
+    const errorMsg = error.response?.data?.message || '投递失败';
+    appendEvent(errorMsg);
+    ElNotification({
+      title: '投递失败',
+      message: errorMsg,
+      type: 'error',
+      duration: 1500,
+      position: 'bottom-right'
+    });
   }
 }
 

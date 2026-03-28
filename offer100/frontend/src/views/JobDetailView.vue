@@ -66,6 +66,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { ElNotification } from 'element-plus';
 import http from '../api/http';
 import TopBar from '../components/TopBar.vue';
 import { useAuthStore } from '../stores/auth';
@@ -99,9 +100,22 @@ async function loadJob() {
 async function applyJob() {
   try {
     await http.post(`/jobs/${route.params.id}/apply`);
-    tip.value = '投递成功，已自动向招聘者发送个人信息卡片和常用语';
+    ElNotification({
+      title: '投递成功',
+      message: '已自动向招聘者发送个人信息卡片和常用语',
+      type: 'success',
+      duration: 1500,
+      position: 'bottom-right'
+    });
   } catch (error) {
-    tip.value = error.response?.data?.message || '投递失败';
+    const errorMsg = error.response?.data?.message || '投递失败';
+    ElNotification({
+      title: '投递失败',
+      message: errorMsg,
+      type: 'error',
+      duration: 1500,
+      position: 'bottom-right'
+    });
   }
 }
 

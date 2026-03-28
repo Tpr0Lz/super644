@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const axios = require('axios');
 const { all } = require('../data/db');
 
@@ -15,10 +15,53 @@ function getCozeHeaders() {
   };
 }
 
+async function buildAiSyncData() {
+  const jobRows = await all(
+    `SELECT id, title, salary_range, city, description, publish_at
+     FROM jobs
+     ORDER BY id DESC
+     LIMIT 50`
+  );
+
+  const userRows = await all(
+    `SELECT u.id, u.username, u.nickname, u.role,
+            r.full_name, r.expected_salary, r.location, r.strengths, r.experience
+     FROM users u
+     LEFT JOIN resumes r ON r.user_id = u.id
+     ORDER BY u.id DESC
+     LIMIT 50`
+  );
+
+  const jobs = jobRows.map((row) => ({
+    id: row.id,
+    job_name: row.title,
+    salary_range: row.salary_range || '',
+    location: row.city || '',
+    tech_stack: row.description || '',
+    description: row.description || '',
+    create_time: row.publish_at || ''
+  }));
+
+  const users = userRows.map((row) => ({
+    uid: String(row.id),
+    username: row.full_name || row.nickname || row.username,
+    expect_salary: row.expected_salary || '不限',
+    current_location: row.location || '',
+    skills: row.strengths || '',
+    experience: row.experience || '',
+    user_identity: row.role === 'recruiter' ? 'recruiter' : 'jobseeker',
+    identity_type: row.role === 'recruiter' ? '招聘者' : '求职者'
+  }));
+
+  return { jobs, users };
+}
+
 router.post('/chat', async (req, res) => {
   const { content, userId: manualUserId, userIdentity } = req.body;
   const userId = String(manualUserId || 'anonymous');
   const existingConversationId = userConversations.get(userId);
+  const normalizedUserIdentity = userIdentity === 'recruiter' ? 'recruiter' : 'jobseeker';
+  const identityType = normalizedUserIdentity === 'recruiter' ? '招聘者' : '求职者';
 
   if (!String(content || '').trim()) {
     return res.status(400).json({ success: false, answer: '消息内容不能为空' });
@@ -32,6 +75,7 @@ router.post('/chat', async (req, res) => {
   }
 
   try {
+    const syncData = await buildAiSyncData();
     const requestData = {
       bot_id: COZE_BOT_ID,
       user_id: userId,
@@ -41,13 +85,28 @@ router.post('/chat', async (req, res) => {
           role: 'user',
           content,
           content_type: 'text'
+        },
+        {
+          role: 'user',
+          content: JSON.stringify(
+            {
+              manual_input: content,
+              current_uid: userId,
+              user_identity: normalizedUserIdentity,
+              identity_type: identityType
+            },
+            null,
+            2
+          ),
+          content_type: 'text'
         }
       ],
       parameters: {
         manual_input: content,
         current_uid: userId,
-        user_identity: userIdentity,
-        identity_type: userIdentity === 'recruiter' ? '招聘者' : '求职者'
+        user_identity: normalizedUserIdentity,
+        identity_type: identityType,
+        sync_data: syncData
       }
     };
 
@@ -57,7 +116,7 @@ router.post('/chat', async (req, res) => {
 
     const cozeResponse = await axios.post(`${COZE_API_BASE}/chat`, requestData, {
       headers: getCozeHeaders(),
-      timeout: 60000 
+      timeout: 60000
     });
 
     if (!cozeResponse.data || !cozeResponse.data.data) {
@@ -66,7 +125,7 @@ router.post('/chat', async (req, res) => {
 
     const { id: chat_id, conversation_id } = cozeResponse.data.data;
     let status = cozeResponse.data.data.status;
-    
+
     userConversations.set(userId, conversation_id);
 
     while (status === 'in_progress' || status === 'created') {
@@ -110,44 +169,8 @@ router.post('/chat', async (req, res) => {
 
 router.get('/sync-data', async (req, res) => {
   try {
-    const jobRows = await all(
-      `SELECT id, title, salary_range, city, description, publish_at
-       FROM jobs
-       ORDER BY id DESC
-       LIMIT 50`
-    );
-
-    const userRows = await all(
-      `SELECT u.id, u.username, u.nickname, u.role,
-              r.full_name, r.expected_salary, r.location, r.strengths, r.experience
-       FROM users u
-       LEFT JOIN resumes r ON r.user_id = u.id
-       ORDER BY u.id DESC
-       LIMIT 50`
-    );
-
-    const jobs = jobRows.map((row) => ({
-      id: row.id,
-      job_name: row.title,
-      salary_range: row.salary_range || '',
-      location: row.city || '',
-      tech_stack: row.description || '',
-      description: row.description || '',
-      create_time: row.publish_at || ''
-    }));
-
-    const users = userRows.map((row) => ({
-      uid: String(row.id),
-      username: row.full_name || row.nickname || row.username,
-      expect_salary: row.expected_salary || '不限',
-      current_location: row.location || '',
-      skills: row.strengths || '',
-      experience: row.experience || '',
-      user_identity: row.role === 'recruiter' ? 'recruiter' : 'jobseeker',
-      identity_type: row.role === 'recruiter' ? '招聘者' : '求职者'
-    }));
-
-    res.json({ success: true, data: { jobs, users } });
+    const data = await buildAiSyncData();
+    res.json({ success: true, data });
   } catch (err) {
     console.error('同步 AI 数据失败:', err.message);
     res.status(500).json({ success: false, message: '数据库同步失败' });

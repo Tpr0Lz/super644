@@ -205,7 +205,9 @@ function logout() {
 .markdown-body :deep(h4) {
   margin: 0 0 10px;
   color: #1146a6;
-  line-height: 1.35;
+  line-height: 1.45;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .markdown-body :deep(p) {

@@ -40,10 +40,12 @@ async function buildAiSyncData() {
     tech_stack: row.description || '',
     description: row.description || '',
     create_time: row.publish_at || ''
-  }));
+  }))
+    .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
 
   const users = userRows.map((row) => ({
     uid: String(row.id),
+    user_id: row.id,
     username: row.full_name || row.nickname || row.username,
     expect_salary: row.expected_salary || '不限',
     current_location: row.location || '',
@@ -51,7 +53,8 @@ async function buildAiSyncData() {
     experience: row.experience || '',
     user_identity: row.role === 'recruiter' ? 'recruiter' : 'jobseeker',
     identity_type: row.role === 'recruiter' ? '招聘者' : '求职者'
-  }));
+  }))
+    .sort((a, b) => Number(b.user_id || b.uid || 0) - Number(a.user_id || a.uid || 0));
 
   return { jobs, users };
 }

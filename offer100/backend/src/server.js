@@ -2,6 +2,9 @@ const http = require('http');
 const express = require('express');
 const cors = require('cors');
 const { Server } = require('socket.io');
+const dotenv = require('dotenv');
+
+dotenv.config({ quiet: true });
 
 const authRoutes = require('./routes/authRoutes');
 const jobRoutes = require('./routes/jobRoutes');
@@ -53,6 +56,21 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3001;
+
+function handleServerError(error) {
+  if (error.code === 'EADDRINUSE') {
+    console.error(
+      `Port ${PORT} is already in use. Another Offer100 backend may already be running.`
+    );
+    console.error(`Check http://localhost:${PORT}/api/health or stop the existing process first.`);
+    process.exit(1);
+  }
+
+  console.error('Failed to start HTTP server:', error.message);
+  process.exit(1);
+}
+
+server.on('error', handleServerError);
 
 async function startServer() {
   try {

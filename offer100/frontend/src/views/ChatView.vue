@@ -144,7 +144,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onActivated, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { io } from 'socket.io-client';
 import http from '../api/http';
@@ -161,9 +161,37 @@ const activeContactId = ref(0);
 const messageText = ref('');
 const chatListRef = ref(null);
 const myAvatarUrl = ref('');
+const contactsLoadedAt = ref(0);
+const messageLoadedAt = ref({});
+const hasMarkedAllRead = ref(false);
 const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="%23dbeafe"/><circle cx="40" cy="30" r="14" fill="%2393c5fd"/><path d="M16 66c4-12 14-18 24-18s20 6 24 18" fill="%2393c5fd"/></svg>';
+const CONTACTS_CACHE_TTL = 30 * 1000;
+const MESSAGES_CACHE_TTL = 15 * 1000;
 
 let socket;
+
+function shouldRefreshContacts(force = false) {
+  if (force || contacts.value.length === 0) {
+    return true;
+  }
+  return Date.now() - contactsLoadedAt.value > CONTACTS_CACHE_TTL;
+}
+
+function shouldRefreshMessages(userId, force = false) {
+  if (!userId || force || messages.value.length === 0) {
+    return true;
+  }
+  const loadedAt = Number(messageLoadedAt.value[userId] || 0);
+  return !loadedAt || Date.now() - loadedAt > MESSAGES_CACHE_TTL;
+}
+
+function getSocketUrl() {
+  if (typeof window === 'undefined') {
+    return 'http://localhost:3001';
+  }
+  const apiOrigin = new URL(http.defaults.baseURL || '/api', window.location.origin).origin;
+  return apiOrigin;
+}
 
 async function loadMyAvatar() {
   try {
@@ -174,14 +202,24 @@ async function loadMyAvatar() {
   }
 }
 
-async function loadContacts() {
+async function loadContacts(force = false) {
+  if (!shouldRefreshContacts(force)) {
+    return applyRouteSelection();
+  }
   const { data } = await http.get('/chat/contacts');
   contacts.value = Array.isArray(data) ? data : [];
+  contactsLoadedAt.value = Date.now();
 
+  await applyRouteSelection();
+}
+
+async function applyRouteSelection(forceMessages = false) {
   const routeContactId = Number(route.query.with || 0);
   if (routeContactId && contacts.value.some((item) => item.id === routeContactId)) {
     activeContactId.value = routeContactId;
-    await loadMessages();
+    if (shouldRefreshMessages(routeContactId, forceMessages)) {
+      await loadMessages(forceMessages);
+    }
     return;
   }
 
@@ -191,7 +229,7 @@ async function loadContacts() {
       if (!target?.isDeleted) {
         contacts.value = [target, ...contacts.value];
         activeContactId.value = routeContactId;
-        await loadMessages();
+        await loadMessages(true);
         return;
       }
       if (String(route.query.with || '') === String(routeContactId)) {
@@ -205,7 +243,9 @@ async function loadContacts() {
 
   if (!activeContactId.value && contacts.value.length > 0) {
     activeContactId.value = contacts.value[0].id;
-    await loadMessages();
+    if (shouldRefreshMessages(activeContactId.value, forceMessages)) {
+      await loadMessages(forceMessages);
+    }
     return;
   }
 
@@ -222,11 +262,32 @@ async function scrollChatToBottom() {
   }
 }
 
-async function loadMessages() {
+async function loadMessages(force = false) {
   if (!activeContactId.value) return;
+  if (!shouldRefreshMessages(activeContactId.value, force)) {
+    await scrollChatToBottom();
+    return;
+  }
   const { data } = await http.get(`/chat/messages/${activeContactId.value}`);
   messages.value = data;
+  messageLoadedAt.value = {
+    ...messageLoadedAt.value,
+    [activeContactId.value]: Date.now()
+  };
   await scrollChatToBottom();
+}
+
+function updateContactPreview(savedMessage) {
+  const targetId = Number(savedMessage?.to_user_id || activeContactId.value);
+  if (!targetId) {
+    return;
+  }
+
+  const existing = contacts.value.find((item) => item.id === targetId);
+  if (existing) {
+    existing.lastMessageAt = savedMessage?.created_at || new Date().toISOString();
+    existing.unreadCount = 0;
+  }
 }
 
 async function sendMessage() {
@@ -234,12 +295,18 @@ async function sendMessage() {
   const text = messageText.value;
   messageText.value = '';
   try {
-    await http.post('/chat/messages', {
+    const { data: saved } = await http.post('/chat/messages', {
       toUserId: activeContactId.value,
       content: text
     });
-    await loadMessages();
-    await loadContacts();
+    messages.value = [...messages.value, saved];
+    messageLoadedAt.value = {
+      ...messageLoadedAt.value,
+      [activeContactId.value]: Date.now()
+    };
+    updateContactPreview(saved);
+    await scrollChatToBottom();
+    void loadContacts(true);
   } catch (error) {
     messageText.value = text;
   }
@@ -355,15 +422,19 @@ function logout() {
 }
 
 onMounted(async () => {
-  await loadMyAvatar();
-  try {
-    await http.post('/chat/mark-all-read');
-  } catch (error) {
-    // ignore mark-all-read failure to keep chat usable
-  }
-  await loadContacts();
+  await Promise.allSettled([
+    loadMyAvatar(),
+    loadContacts(true)
+  ]);
 
-  socket = io('http://localhost:3001');
+  if (!hasMarkedAllRead.value) {
+    hasMarkedAllRead.value = true;
+    http.post('/chat/mark-all-read').catch(() => {
+      // ignore mark-all-read failure to keep chat usable
+    });
+  }
+
+  socket = io(getSocketUrl());
   socket.on('recruitment:update', async (event) => {
     if (event.type === 'chat_message' || event.type === 'chat_read') {
       const msg = event.payload;
@@ -372,17 +443,24 @@ onMounted(async () => {
         msg?.from_user_id === activeContactId.value ||
         msg?.to_user_id === activeContactId.value
       ) {
-        await loadMessages();
+        await loadMessages(true);
       }
-      await loadContacts();
+      await loadContacts(true);
     }
   });
+});
+
+onActivated(async () => {
+  await Promise.allSettled([
+    loadMyAvatar(),
+    loadContacts()
+  ]);
 });
 
 watch(
   () => route.query.with,
   async () => {
-    await loadContacts();
+    await applyRouteSelection(true);
   }
 );
 
@@ -391,8 +469,12 @@ watch(
   async () => {
     activeContactId.value = 0;
     messages.value = [];
+    contacts.value = [];
+    contactsLoadedAt.value = 0;
+    messageLoadedAt.value = {};
+    hasMarkedAllRead.value = false;
     await loadMyAvatar();
-    await loadContacts();
+    await loadContacts(true);
   }
 );
 

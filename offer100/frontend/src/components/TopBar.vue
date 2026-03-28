@@ -66,6 +66,14 @@ const authStore = useAuthStore();
 const unreadCount = ref(0);
 let socket;
 
+function getSocketUrl() {
+  if (typeof window === 'undefined') {
+    return 'http://localhost:3001';
+  }
+  const apiOrigin = new URL(http.defaults.baseURL || '/api', window.location.origin).origin;
+  return apiOrigin;
+}
+
 const displayUsername = computed(() => {
   return props.username || authStore.user?.nickname || authStore.user?.username || '未登录';
 });
@@ -109,7 +117,7 @@ onMounted(async () => {
   // 只有明确登录了才去加载消息和启动 socket
   if (authStore.token && authStore.token.length > 10) {
     await loadUnreadSummary();
-    socket = io('http://localhost:3001');
+    socket = io(getSocketUrl());
     socket.on('recruitment:update', async (event) => {
       if (event?.type === 'chat_message' || event?.type === 'chat_read') {
         await loadUnreadSummary();

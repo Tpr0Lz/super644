@@ -63,12 +63,15 @@ const handleSend = async () => {
   loading.value = true;
 
   try {
-    const { data } = await chatWithAI(userText, authStore.user?.id);
+    const { data } = await chatWithAI(userText, authStore.user?.id, messages.value);
     // 假设后端返回的对象里内容在 data.answer 中
     messages.value.push({ role: 'assistant', content: data.answer });
     scrollToBottom();
   } catch (e) {
-    messages.value.push({ role: 'assistant', content: '抱歉，信号变弱了，请稍后再试。' });
+    messages.value.push({
+      role: 'assistant',
+      content: e.response?.data?.answer || '抱歉，信号变弱了，请稍后再试。'
+    });
   } finally {
     loading.value = false;
   }

@@ -15,7 +15,33 @@
       <div class="chat-mock">
         <div v-for="(msg, index) in chatList" :key="index" :class="['msg', msg.role]">
           <el-avatar v-if="msg.role === 'ai'" :size="34" class="mini-avatar">AI</el-avatar>
-          <div class="bubble">{{ msg.content }}</div>
+          <div class="msg-stack">
+            <div class="bubble">{{ msg.content }}</div>
+            <div v-if="msg.role === 'ai' && msg.jobCards?.length" class="job-card-list">
+              <button
+                v-for="job in msg.jobCards"
+                :key="job.id"
+                class="job-card"
+                type="button"
+                @click="openJobDetail(job.id)"
+              >
+                <div class="job-card-head">
+                  <strong>{{ job.title }}</strong>
+                  <span v-if="job.salaryRange">{{ job.salaryRange }}</span>
+                </div>
+                <p class="job-card-meta">
+                  {{ job.company || '未知公司' }}
+                  <span v-if="job.city"> | {{ job.city }}</span>
+                </p>
+                <p v-if="job.categoryL1 || job.categoryL2" class="job-card-meta">
+                  {{ job.categoryL1 || '岗位' }}
+                  <span v-if="job.categoryL2"> / {{ job.categoryL2 }}</span>
+                </p>
+                <p v-if="job.matchReason" class="job-card-tip">{{ job.matchReason }}</p>
+                <span class="job-card-link">点击查看详情</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div v-if="isLoading" class="msg ai">
@@ -34,52 +60,69 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import TopBar from '../components/TopBar.vue';
 import { useAuthStore } from '../stores/auth';
+import { useAiAssistantStore } from '../stores/aiAssistant';
 import { chatWithAI } from '../api/ai';
 
 const authStore = useAuthStore();
+const aiAssistantStore = useAiAssistantStore();
 const router = useRouter();
 
 const userInput = ref('');
 const isLoading = ref(false);
-const chatList = ref([
-  { role: 'ai', content: '你好，我是超级644AI助手。你可以让我分析岗位、简历或招聘数据。' }
-]);
+const currentUserId = computed(() => String(authStore.user?.id || 'anonymous'));
+const chatList = computed(() => aiAssistantStore.conversations[currentUserId.value] || []);
+
+watch(
+  currentUserId,
+  (userId) => {
+    aiAssistantStore.ensureConversation(userId);
+  },
+  { immediate: true }
+);
 
 async function handleSend() {
   if (!userInput.value.trim() || isLoading.value) return;
 
   const userMsg = userInput.value;
-  chatList.value.push({ role: 'user', content: userMsg });
+  aiAssistantStore.appendMessage(currentUserId.value, { role: 'user', content: userMsg });
   userInput.value = '';
   isLoading.value = true;
 
   try {
-    const res = await chatWithAI(userMsg, authStore.user?.id);
+    const res = await chatWithAI(userMsg, authStore.user?.id, chatList.value);
 
     if (res.data && res.data.answer) {
-      chatList.value.push({
+      aiAssistantStore.appendMessage(currentUserId.value, {
         role: 'ai',
-        content: res.data.answer
+        content: res.data.answer,
+        jobCards: res.data.jobCards
       });
     } else {
-      chatList.value.push({
+      aiAssistantStore.appendMessage(currentUserId.value, {
         role: 'ai',
         content: 'AI 响应成功，但没有返回具体文字内容。'
       });
     }
   } catch (error) {
     console.error('AI Chat Error:', error);
-    chatList.value.push({
+    aiAssistantStore.appendMessage(currentUserId.value, {
       role: 'ai',
-      content: '对话失败，请确认后端已启动且 Coze 环境变量已配置。'
+      content: error.response?.data?.answer || '对话失败，请确认后端已启动且 Coze 环境变量已配置。'
     });
   } finally {
     isLoading.value = false;
   }
+}
+
+function openJobDetail(jobId) {
+  if (!jobId) {
+    return;
+  }
+  router.push(`/jobs/${jobId}`);
 }
 
 function switchIdentity(identity) {
@@ -122,6 +165,7 @@ function logout() {
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  width: 100%;
 }
 
 .msg.user {
@@ -129,10 +173,24 @@ function logout() {
 }
 
 .bubble {
-  max-width: 72%;
   border-radius: 10px;
   padding: 10px 12px;
   line-height: 1.5;
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.msg-stack {
+  width: fit-content;
+  max-width: min(72%, 680px);
+  display: grid;
+  gap: 8px;
+}
+
+.msg.user .msg-stack {
+  margin-left: auto;
+  justify-items: end;
 }
 
 .msg.ai .bubble {
@@ -150,5 +208,53 @@ function logout() {
   display: grid;
   grid-template-columns: 1fr 90px;
   gap: 10px;
+}
+
+.job-card-list {
+  display: grid;
+  gap: 8px;
+}
+
+.job-card {
+  width: 100%;
+  border: 1px solid #bfd5ff;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.job-card:hover {
+  transform: translateY(-1px);
+  border-color: #7aa6ff;
+  box-shadow: 0 8px 18px rgba(30, 99, 216, 0.12);
+}
+
+.job-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #1e3a8a;
+}
+
+.job-card-meta {
+  margin: 6px 0 0;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.job-card-tip {
+  margin: 8px 0 0;
+  color: #166534;
+  line-height: 1.5;
+}
+
+.job-card-link {
+  display: inline-block;
+  margin-top: 8px;
+  color: #2563eb;
+  font-size: 13px;
 }
 </style>

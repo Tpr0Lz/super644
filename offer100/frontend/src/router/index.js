@@ -75,7 +75,7 @@ const routes = [
     path: '/chat',
     name: 'chat',
     component: ChatView,
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, keepAlive: true }
   },
   {
     path: '/ai',

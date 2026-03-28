@@ -605,6 +605,17 @@ async function createTables() {
       UNIQUE KEY uniq_user_contact (user_id, contact_user_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
   );
+
+  await run(
+    `CREATE TABLE IF NOT EXISTS ai_chat_history (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      user_key VARCHAR(191) NOT NULL,
+      role VARCHAR(20) NOT NULL,
+      content LONGTEXT NOT NULL,
+      created_at VARCHAR(40) NOT NULL,
+      INDEX idx_ai_chat_history_user_key_id (user_key, id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
 }
 
 async function applyMigrations() {

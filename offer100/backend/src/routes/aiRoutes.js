@@ -16,7 +16,7 @@ function getCozeHeaders() {
 }
 
 router.post('/chat', async (req, res) => {
-  const { content, userId: manualUserId } = req.body;
+  const { content, userId: manualUserId, userIdentity } = req.body;
   const userId = String(manualUserId || 'anonymous');
   const existingConversationId = userConversations.get(userId);
 
@@ -45,7 +45,9 @@ router.post('/chat', async (req, res) => {
       ],
       parameters: {
         manual_input: content,
-        current_uid: userId
+        current_uid: userId,
+        user_identity: userIdentity,
+        identity_type: userIdentity === 'recruiter' ? '招聘者' : '求职者'
       }
     };
 

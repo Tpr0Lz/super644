@@ -58,7 +58,7 @@ async function handleSend() {
   isLoading.value = true;
 
   try {
-    const res = await chatWithAI(userMsg, authStore.user?.id);
+    const res = await chatWithAI(userMsg, authStore.user?.id, authStore.activeIdentity);
 
     if (res.data && res.data.answer) {
       chatList.value.push({

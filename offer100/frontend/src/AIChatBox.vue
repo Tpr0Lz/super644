@@ -63,7 +63,7 @@ const handleSend = async () => {
   loading.value = true;
 
   try {
-    const { data } = await chatWithAI(userText, authStore.user?.id);
+    const { data } = await chatWithAI(userText, authStore.user?.id, authStore.activeIdentity);
     // 假设后端返回的对象里内容在 data.answer 中
     messages.value.push({ role: 'assistant', content: data.answer });
     scrollToBottom();

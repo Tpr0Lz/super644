@@ -15,7 +15,7 @@
       <div class="chat-mock">
         <div v-for="(msg, index) in chatList" :key="index" :class="['msg', msg.role]">
           <el-avatar v-if="msg.role === 'ai'" :size="34" class="mini-avatar">AI</el-avatar>
-          <div class="bubble">{{ msg.content }}</div>
+          <div class="bubble" v-html="renderMarkdown(msg.content)"></div>
         </div>
 
         <div v-if="isLoading" class="msg ai">
@@ -34,22 +34,55 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import TopBar from '../components/TopBar.vue';
 import { useAuthStore } from '../stores/auth';
 import { chatWithAI } from '../api/ai';
+import { marked } from 'marked'; // 需要安装: npm install marked
 
 const authStore = useAuthStore();
 const router = useRouter();
 
 const userInput = ref('');
 const isLoading = ref(false);
-const chatList = ref([
-  { role: 'ai', content: '你好，我是超级644AI助手。你可以让我分析岗位、简历或招聘数据。' }
-]);
+const chatList = ref([]);
+
+// 从 localStorage 加载聊天记录
+const loadChatHistory = () => {
+  const savedChats = localStorage.getItem('aiChatHistory');
+  if (savedChats) {
+    try {
+      chatList.value = JSON.parse(savedChats);
+    } catch (e) {
+      console.error('Failed to load chat history:', e);
+      chatList.value = [{ role: 'ai', content: '你好，我是超级644AI助手。你可以让我分析岗位、简历或招聘数据。' }];
+    }
+  } else {
+    chatList.value = [{ role: 'ai', content: '你好，我是超级644AI助手。你可以让我分析岗位、简历或招聘数据。' }];
+  }
+};
+
+// 保存聊天记录到 localStorage
+const saveChatHistory = () => {
+  localStorage.setItem('aiChatHistory', JSON.stringify(chatList.value));
+};
+
+// 组件挂载时加载聊天记录
+onMounted(() => {
+  loadChatHistory();
+});
+
+// 组件卸载时保存聊天记录
+onUnmounted(() => {
+  saveChatHistory();
+});
+
+// 将 AI 返回内容按 Markdown 渲染
+const renderMarkdown = (text) => marked(text || '');
 
 async function handleSend() {
+  // 发送消息到后端 /ai/chat
   if (!userInput.value.trim() || isLoading.value) return;
 
   const userMsg = userInput.value;
@@ -58,6 +91,7 @@ async function handleSend() {
   isLoading.value = true;
 
   try {
+    // 携带用户 id 与身份，便于后端注入 Coze 上下文
     const res = await chatWithAI(userMsg, authStore.user?.id, authStore.activeIdentity);
 
     if (res.data && res.data.answer) {
@@ -79,6 +113,7 @@ async function handleSend() {
     });
   } finally {
     isLoading.value = false;
+    saveChatHistory(); // 保存聊天记录
   }
 }
 

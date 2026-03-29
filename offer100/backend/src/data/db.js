@@ -605,6 +605,18 @@ async function createTables() {
       UNIQUE KEY uniq_user_contact (user_id, contact_user_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
   );
+
+  await run(
+    `CREATE TABLE IF NOT EXISTS ai_conversations (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      user_id INT NOT NULL,
+      conversation_id VARCHAR(255) NOT NULL,
+      provider VARCHAR(50) DEFAULT 'coze',
+      created_at VARCHAR(40) NOT NULL,
+      updated_at VARCHAR(40) NOT NULL,
+      UNIQUE KEY uniq_user_conversation (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
 }
 
 async function applyMigrations() {
@@ -667,6 +679,10 @@ async function applyMigrations() {
   await ensureColumn('identity_profiles', 'contact_email', 'VARCHAR(191)');
   await ensureColumn('identity_profiles', 'job_hunting_status', 'VARCHAR(50)');
   await ensureColumn('identity_profiles', 'expected_job_type', 'VARCHAR(50)');
+
+  // ai_conversations 表字段
+  await ensureColumn('ai_conversations', 'created_at', 'VARCHAR(40)');
+  await ensureColumn('ai_conversations', 'updated_at', 'VARCHAR(40)');
 }
 
 async function normalizeData() {

@@ -7,7 +7,7 @@
       </div>
 
       <template v-if="mode === 'login'">
-        <h2>登录 Offer100</h2>
+        <h2>登录 职遇</h2>
         <p>登录后默认以注册时选择的初始身份进入系统。</p>
         <form @submit.prevent="submitLogin" class="form">
           <div class="line-field">
@@ -23,7 +23,7 @@
       </template>
 
       <template v-else>
-        <h2>注册 Offer100</h2>
+        <h2>注册 职遇</h2>
         <p>注册时选择初始身份，首次登录将以该身份进入页面。</p>
         <form @submit.prevent="submitRegister" class="form">
           <label>

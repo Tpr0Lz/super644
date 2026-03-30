@@ -105,7 +105,7 @@ td { border: 1px solid #e5e7eb; padding: 10px; vertical-align: top; }
 </head>
 <body>
   <div class="wrap">
-    <h1>Offer100 资料导出</h1>
+    <h1>职遇 资料导出</h1>
     <table>${rows.join('')}</table>
   </div>
 </body>

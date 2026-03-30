@@ -58,7 +58,7 @@ import { chatWithAI } from '../api/ai';
 import { renderAiMarkdown } from '../utils/aiMarkdown';
 
 const ui = {
-  heroTitle: '\u8d85\u7ea7 Offer100 AI \u52a9\u624b',
+  heroTitle: '\u8d85\u7ea7 职遇 AI \u52a9\u624b',
   heroDesc:
     '',
   thinking: '\u601d\u8003\u4e2d...',
@@ -66,7 +66,7 @@ const ui = {
     '\u63cf\u8ff0\u4f60\u7684\u95ee\u9898\uff0c\u4f8b\u5982\uff1a\u63a8\u8350\u9002\u5408\u524d\u7aef\u5c97\u4f4d\u7684\u5019\u9009\u4eba',
   send: '\u53d1\u9001',
   welcome:
-    '\u4f60\u597d\uff0c\u6211\u662f Offer100 AI \u52a9\u624b\uff0c\u6709\u4ec0\u4e48\u6211\u53ef\u4ee5\u5e2e\u52a9\u4f60\u7684\u5417',
+    '\u4f60\u597d\uff0c\u6211\u662f 职遇 AI \u52a9\u624b\uff0c\u6709\u4ec0\u4e48\u6211\u53ef\u4ee5\u5e2e\u52a9\u4f60\u7684\u5417',
   emptyAnswer:
     'AI \u54cd\u5e94\u6210\u529f\uff0c\u4f46\u6ca1\u6709\u8fd4\u56de\u5177\u4f53\u6587\u672c\u5185\u5bb9\u3002',
   chatError:

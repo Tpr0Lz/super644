@@ -3,7 +3,7 @@
     <el-card shadow="never" class="top-shell">
       <div class="topbar">
         <div>
-          <h1>Offer100 就业服务平台</h1>
+          <h1>职遇 就业服务平台</h1>
           <p>仿 BOSS 模式：同账号可切换招聘人 / 求职者身份</p>
         </div>
         <div class="actions">

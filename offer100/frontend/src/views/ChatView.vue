@@ -100,6 +100,22 @@
                       <p class="card-tip">点击查看详情</p>
                     </button>
                   </template>
+                  <template v-else-if="msg.message_type === 'resume_card'">
+                    <p v-if="msg.content">{{ msg.content }}</p>
+                    <button class="card-msg resume-card" v-if="safePayload(msg)" @click="openCardDetail(safePayload(msg), msg.message_type)">
+                      <p><strong>{{ safePayload(msg).title || '求职者简历卡片' }}</strong></p>
+                      <p>
+                        姓名：{{ safePayload(msg).seeker?.fullName || '未填写' }}
+                        <span v-if="safePayload(msg).seeker?.expectedPosition"> | 意向：{{ safePayload(msg).seeker.expectedPosition }}</span>
+                      </p>
+                      <p v-if="safePayload(msg).seeker?.strengths">优势：{{ safePayload(msg).seeker.strengths }}</p>
+                      <p v-if="safePayload(msg).seeker?.school || safePayload(msg).seeker?.degree">
+                        教育：{{ safePayload(msg).seeker?.school || '未填写' }}
+                        <span v-if="safePayload(msg).seeker?.degree"> | {{ safePayload(msg).seeker.degree }}</span>
+                      </p>
+                      <p class="card-tip">点击查看简历详情</p>
+                    </button>
+                  </template>
                   <template v-else>
                     {{ msg.content }}
                   </template>
@@ -118,6 +134,15 @@
               clearable
               @keyup.enter="sendMessage"
             />
+            <el-button
+              v-if="authStore.activeIdentity === 'jobseeker'"
+              type="success"
+              plain
+              :loading="sendingResume"
+              @click="sendResumeCard"
+            >
+              发送简历
+            </el-button>
             <el-button type="primary" :disabled="!activeContactId || !messageText" @click="sendMessage">发送</el-button>
           </el-form>
         </div>
@@ -130,6 +155,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { io } from 'socket.io-client';
+import { ElMessage } from 'element-plus';
 import http from '../api/http';
 import TopBar from '../components/TopBar.vue';
 import { useAuthStore } from '../stores/auth';
@@ -142,6 +168,7 @@ const contacts = ref([]);
 const messages = ref([]);
 const activeContactId = ref(0);
 const messageText = ref('');
+const sendingResume = ref(false);
 const chatListRef = ref(null);
 const myAvatarUrl = ref('');
 const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="%23dbeafe"/><circle cx="40" cy="30" r="14" fill="%2393c5fd"/><path d="M16 66c4-12 14-18 24-18s20 6 24 18" fill="%2393c5fd"/></svg>';
@@ -228,6 +255,53 @@ async function sendMessage() {
   }
 }
 
+function buildResumePayload(resume) {
+  return {
+    title: '求职者简历卡片',
+    seeker: {
+      userId: authStore.user?.id,
+      fullName: resume?.full_name || authStore.user?.nickname || authStore.user?.username || '未命名求职者',
+      expectedPosition: resume?.expected_position || '',
+      strengths: resume?.strengths || '',
+      school: resume?.school || '',
+      degree: resume?.degree || '',
+      location: resume?.location || ''
+    }
+  };
+}
+
+async function sendResumeCard() {
+  if (!activeContactId.value || authStore.activeIdentity !== 'jobseeker' || sendingResume.value) {
+    return;
+  }
+
+  sendingResume.value = true;
+  try {
+    const { data: resume } = await http.get('/resume/me');
+    const hasContent = Boolean(
+      resume?.full_name || resume?.expected_position || resume?.strengths || resume?.school
+    );
+    if (!hasContent) {
+      ElMessage.warning('你的简历信息为空，请先完善后再发送');
+      return;
+    }
+
+    await http.post('/chat/messages', {
+      toUserId: activeContactId.value,
+      content: '我发送了一份简历卡片',
+      messageType: 'resume_card',
+      payload: buildResumePayload(resume)
+    });
+    ElMessage.success('简历卡片已发送');
+    await loadMessages();
+    await loadContacts();
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || '发送简历失败');
+  } finally {
+    sendingResume.value = false;
+  }
+}
+
 async function selectContact(userId) {
   if (String(route.query.with || '') !== String(userId)) {
     await router.replace({ path: '/chat', query: { with: String(userId) } });
@@ -307,6 +381,29 @@ const visibleMessages = computed(() =>
 
 function openCardDetail(payload, messageType) {
   if (!payload) {
+    return;
+  }
+
+  if (messageType === 'resume_card') {
+    const seekerUserId = Number(payload?.seeker?.userId || 0);
+    if (!seekerUserId) {
+      return;
+    }
+
+    if (seekerUserId === authStore.user?.id) {
+      if (authStore.activeIdentity !== 'jobseeker') {
+        authStore.setActiveIdentity('jobseeker');
+      }
+      router.push('/profile');
+      return;
+    }
+
+    if (authStore.activeIdentity === 'recruiter') {
+      router.push(`/seekers/${seekerUserId}`);
+      return;
+    }
+
+    ElMessage.warning('当前身份无法查看该求职者简历详情');
     return;
   }
 
@@ -565,8 +662,13 @@ onUnmounted(() => {
 
 .chat-form {
   display: grid;
-  grid-template-columns: 1fr 90px;
+  grid-template-columns: 1fr auto 90px;
   gap: 10px;
+}
+
+.resume-card {
+  background: #f0fdf4;
+  border-color: #86efac;
 }
 
 </style>

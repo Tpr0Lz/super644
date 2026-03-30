@@ -87,17 +87,17 @@
                   {{ msg.from_user_id === authStore.user?.id ? '我' : activeContactName }}
                 </div>
                 <div class="msg-bubble">
-                  <template v-if="msg.message_type === 'application_card' || msg.message_type === 'invitation_card'">
+                  <template v-if="msg.message_type === 'application_card' || msg.message_type === 'invitation_card' || msg.message_type === 'job_card'">
                     <p v-if="msg.content">{{ msg.content }}</p>
                     <button class="card-msg" v-if="safePayload(msg)" @click="openCardDetail(safePayload(msg), msg.message_type)">
-                      <p><strong>{{ safePayload(msg).title }}</strong></p>
+                      <p><strong>{{ safePayload(msg).title || '岗位卡片' }}</strong></p>
                       <p v-if="safePayload(msg).job">
                         岗位：{{ safePayload(msg).job.title }} | {{ safePayload(msg).job.company }} | {{ safePayload(msg).job.city }}
                       </p>
                       <p v-if="safePayload(msg).seeker">
                         求职者：{{ safePayload(msg).seeker.fullName }}，优势：{{ safePayload(msg).seeker.strengths }}
                       </p>
-                      <p class="card-tip">点击查看详情</p>
+                      <p class="card-tip">点击查看岗位详情</p>
                     </button>
                   </template>
                   <template v-else-if="msg.message_type === 'resume_card'">
@@ -143,11 +143,41 @@
             >
               发送简历
             </el-button>
+            <el-button
+              v-if="authStore.activeIdentity === 'recruiter'"
+              type="warning"
+              plain
+              :loading="sendingJobCard"
+              @click="openJobCardDialog"
+            >
+              发送岗位
+            </el-button>
             <el-button type="primary" :disabled="!activeContactId || !messageText" @click="sendMessage">发送</el-button>
           </el-form>
         </div>
       </div>
     </el-card>
+
+    <el-dialog v-model="jobCardDialogVisible" title="选择要发送的岗位" width="480px">
+      <el-select
+        v-model="selectedJobId"
+        style="width: 100%"
+        filterable
+        clearable
+        placeholder="请选择岗位"
+      >
+        <el-option
+          v-for="job in availableJobs"
+          :key="job.id"
+          :label="`${job.title} | ${job.company} | ${job.city}`"
+          :value="job.id"
+        />
+      </el-select>
+      <template #footer>
+        <el-button @click="jobCardDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="sendingJobCard" @click="sendJobCard">发送岗位卡片</el-button>
+      </template>
+    </el-dialog>
   </main>
 </template>
 
@@ -169,6 +199,10 @@ const messages = ref([]);
 const activeContactId = ref(0);
 const messageText = ref('');
 const sendingResume = ref(false);
+const sendingJobCard = ref(false);
+const jobCardDialogVisible = ref(false);
+const selectedJobId = ref(null);
+const availableJobs = ref([]);
 const chatListRef = ref(null);
 const myAvatarUrl = ref('');
 const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="%23dbeafe"/><circle cx="40" cy="30" r="14" fill="%2393c5fd"/><path d="M16 66c4-12 14-18 24-18s20 6 24 18" fill="%2393c5fd"/></svg>';
@@ -299,6 +333,96 @@ async function sendResumeCard() {
     ElMessage.error(error?.response?.data?.message || '发送简历失败');
   } finally {
     sendingResume.value = false;
+  }
+}
+
+function normalizeJob(job) {
+  return {
+    id: Number(job?.id || 0),
+    title: job?.title || '未命名岗位',
+    company: job?.company || '未知公司',
+    city: job?.city || '未知城市',
+    salaryRange: job?.salaryRange || job?.salary_range || '',
+    employmentType: job?.employmentType || job?.employment_type || ''
+  };
+}
+
+async function loadAvailableJobs() {
+  if (authStore.activeIdentity !== 'recruiter') {
+    availableJobs.value = [];
+    return;
+  }
+
+  const { data } = await http.get('/jobs/mine');
+  const rows = Array.isArray(data) ? data : [];
+  availableJobs.value = rows.map(normalizeJob).filter((job) => job.id > 0);
+}
+
+async function openJobCardDialog() {
+  if (!activeContactId.value || authStore.activeIdentity !== 'recruiter') {
+    return;
+  }
+  try {
+    if (availableJobs.value.length === 0) {
+      await loadAvailableJobs();
+    }
+    if (availableJobs.value.length === 0) {
+      ElMessage.warning('当前没有可发送的岗位');
+      return;
+    }
+    selectedJobId.value = availableJobs.value[0].id;
+    jobCardDialogVisible.value = true;
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || '加载岗位失败');
+  }
+}
+
+function buildJobPayload(job) {
+  return {
+    title: '岗位推荐卡片',
+    job: {
+      id: job.id,
+      title: job.title,
+      company: job.company,
+      city: job.city,
+      salaryRange: job.salaryRange,
+      employmentType: job.employmentType
+    }
+  };
+}
+
+async function sendJobCard() {
+  if (
+    !activeContactId.value ||
+    !selectedJobId.value ||
+    sendingJobCard.value ||
+    authStore.activeIdentity !== 'recruiter'
+  ) {
+    return;
+  }
+
+  const picked = availableJobs.value.find((job) => String(job.id) === String(selectedJobId.value));
+  if (!picked) {
+    ElMessage.warning('请选择有效岗位');
+    return;
+  }
+
+  sendingJobCard.value = true;
+  try {
+    await http.post('/chat/messages', {
+      toUserId: activeContactId.value,
+      content: `我推荐了一个岗位：${picked.title}`,
+      messageType: 'job_card',
+      payload: buildJobPayload(picked)
+    });
+    ElMessage.success('岗位卡片已发送');
+    jobCardDialogVisible.value = false;
+    await loadMessages();
+    await loadContacts();
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || '发送岗位卡片失败');
+  } finally {
+    sendingJobCard.value = false;
   }
 }
 
@@ -440,6 +564,7 @@ function logout() {
 
 onMounted(async () => {
   await loadMyAvatar();
+  await loadAvailableJobs();
   try {
     await http.post('/chat/mark-all-read');
   } catch (error) {
@@ -476,6 +601,7 @@ watch(
     activeContactId.value = 0;
     messages.value = [];
     await loadMyAvatar();
+    await loadAvailableJobs();
     await loadContacts();
   }
 );

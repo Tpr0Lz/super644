@@ -223,10 +223,10 @@ const seekerStatusOptions = ['不限', '暂不考虑', '考虑机会', '月内�
 const categoryOptions = JOB_CATEGORY_TREE;
 const categoryL2Options = computed(() => {
   if (!categoryL1Filter.value) {
-    return JOB_CATEGORY_TREE.value.flatMap((item) => item.children);
+    return JOB_CATEGORY_TREE.value.flatMap((item) => (Array.isArray(item.children) ? item.children : []));
   }
   const item = JOB_CATEGORY_TREE.value.find((entry) => entry.value === categoryL1Filter.value);
-  return item?.children || [];
+  return Array.isArray(item?.children) ? item.children : [];
 });
 
 const filteredJobCards = computed(() => {
@@ -352,43 +352,48 @@ function isCurrentUser(userId) {
 }
 
 async function loadData() {
-  if (isRecruiter.value) {
-    const params = {};
-    if (seekerKeyword.value) {
-      params.keyword = seekerKeyword.value;
-    }
-    if (seekerJobTypeFilter.value && seekerJobTypeFilter.value !== '不限') {
-      params.expectedJobType = seekerJobTypeFilter.value;
-    }
-    if (seekerSalaryFilter.value && seekerSalaryFilter.value !== '不限') {
-      params.expectedSalary = seekerSalaryFilter.value;
-    }
-    if (seekerDegreeFilter.value && seekerDegreeFilter.value !== '不限') {
-      params.degree = seekerDegreeFilter.value;
-    }
-    if (seekerWorkExperienceFilter.value && seekerWorkExperienceFilter.value !== '不限') {
-      params.workExperience = seekerWorkExperienceFilter.value;
-    }
-    if (seekerLocationFilter.value && seekerLocationFilter.value !== '不限') {
-      params.location = seekerLocationFilter.value;
-    }
-    if (seekerStatusFilter.value && seekerStatusFilter.value !== '不限') {
-      params.jobHuntingStatus = seekerStatusFilter.value;
+  try {
+    tip.value = '';
+    if (isRecruiter.value) {
+      const params = {};
+      if (seekerKeyword.value) {
+        params.keyword = seekerKeyword.value;
+      }
+      if (seekerJobTypeFilter.value && seekerJobTypeFilter.value !== '不限') {
+        params.expectedJobType = seekerJobTypeFilter.value;
+      }
+      if (seekerSalaryFilter.value && seekerSalaryFilter.value !== '不限') {
+        params.expectedSalary = seekerSalaryFilter.value;
+      }
+      if (seekerDegreeFilter.value && seekerDegreeFilter.value !== '不限') {
+        params.degree = seekerDegreeFilter.value;
+      }
+      if (seekerWorkExperienceFilter.value && seekerWorkExperienceFilter.value !== '不限') {
+        params.workExperience = seekerWorkExperienceFilter.value;
+      }
+      if (seekerLocationFilter.value && seekerLocationFilter.value !== '不限') {
+        params.location = seekerLocationFilter.value;
+      }
+      if (seekerStatusFilter.value && seekerStatusFilter.value !== '不限') {
+        params.jobHuntingStatus = seekerStatusFilter.value;
+      }
+
+      const seekersRes = await http.get('/resume/seekers', { params });
+      const data = seekersRes.data;
+      seekerCards.value = (Array.isArray(data) ? data : []).filter((seeker) => !isCurrentUser(seeker.userId));
+      jobCards.value = [];
+      return;
     }
 
-    const seekersRes = await http.get('/resume/seekers', { params });
-
-    const data = seekersRes.data;
-    seekerCards.value = (Array.isArray(data) ? data : []).filter((seeker) => !isCurrentUser(seeker.userId));
+    const jobsRes = await http.get('/jobs');
+    const data = jobsRes.data;
+    jobCards.value = (Array.isArray(data) ? data : []).filter((job) => !isCurrentUser(job.recruiterUserId));
+    seekerCards.value = [];
+  } catch (error) {
+    seekerCards.value = [];
     jobCards.value = [];
-    return;
+    tip.value = error.response?.data?.message || '数据加载失败，请检查登录状态与后端服务';
   }
-
-  const jobsRes = await http.get('/jobs');
-
-  const data = jobsRes.data;
-  jobCards.value = (Array.isArray(data) ? data : []).filter((job) => !isCurrentUser(job.recruiterUserId));
-  seekerCards.value = [];
 }
 
 async function applyJob(jobId) {
@@ -452,9 +457,16 @@ function resetJobFilters() {
 }
 
 onMounted(async () => {
+  await loadCategories();
   await loadData();
 
-  socket = io('http://localhost:3001');
+  socket = io('http://localhost:3001', {
+    reconnectionAttempts: 2,
+    timeout: 3000
+  });
+  socket.on('connect_error', () => {
+    // Backend may be temporarily unavailable during development.
+  });
   socket.on('recruitment:update', async (event) => {
     if (!event?.type) {
       return;
@@ -475,6 +487,7 @@ watch(
   () => authStore.activeIdentity,
   async () => {
     tip.value = '';
+    await loadCategories();
     await loadData();
   }
 );
